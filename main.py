@@ -21,7 +21,7 @@ import torchvision
 import torch.nn.functional as F
 from torchvision.utils import make_grid, save_image
 # from tensorboardX import SummaryWriter
-
+print(torch.__version__)
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr_e', type=float, default=0.0002, help='learning rate of the encoder, default=0.0002')
 parser.add_argument('--lr_g', type=float, default=0.0002, help='learning rate of the generator, default=0.0002')
@@ -75,7 +75,7 @@ def record_image(writer, image_list, cur_iter):
     
 
 def main():
-    
+    torch.autograd.set_detect_anomaly(True)
     global opt, model
     opt = parser.parse_args()
     print(opt)
@@ -191,33 +191,32 @@ def main():
         loss_margin = lossE_real_kl + \
                       (F.relu(opt.m_plus-lossE_rec_kl) + \
                       F.relu(opt.m_plus-lossE_fake_kl)) * 0.5 * opt.weight_neg
-        
-                    
+
         lossE = loss_rec  * opt.weight_rec + loss_margin * opt.weight_kl
         optimizerG.zero_grad()
         optimizerE.zero_grad()       
         lossE.backward(retain_graph=True)
-        # nn.utils.clip_grad_norm(model.encoder.parameters(), 1.0)            
-        optimizerE.step()
-        
-        #========= Update G ==================           
+        # nn.utils.clip_grad_norm(model.encoder.parameters(), 1.0)
+        for m in model.encoder.parameters():
+            m.requires_grad=False
+        #========= Update G ==================
         rec_mu, rec_logvar = model.encode(rec)
         fake_mu, fake_logvar = model.encode(fake)
-        
+
         lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()
         lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()
-        
-        lossG = (lossG_rec_kl + lossG_fake_kl)* 0.5 * opt.weight_kl      
-                    
-        # optimizerG.zero_grad()
+        lossG = (lossG_rec_kl + lossG_fake_kl)* 0.5 * opt.weight_kl
         lossG.backward()
         # nn.utils.clip_grad_norm(model.decoder.parameters(), 1.0)
+        for m in model.encoder.parameters():
+            m.requires_grad=True
+        optimizerE.step()
         optimizerG.step()
-     
-        info += 'Rec: {:.4f}, '.format(loss_rec.data[0])
-        info += 'Kl_E: {:.4f}, {:.4f}, {:.4f}, '.format(lossE_real_kl.data[0], 
-                                lossE_rec_kl.data[0], lossE_fake_kl.data[0])
-        info += 'Kl_G: {:.4f}, {:.4f}, '.format(lossG_rec_kl.data[0], lossG_fake_kl.data[0])
+
+        info += 'Rec: {:.4f}, '.format(loss_rec.item())
+        info += 'Kl_E: {:.4f}, {:.4f}, {:.4f}, '.format(lossE_real_kl.item(),
+                                lossE_rec_kl.item(), lossE_fake_kl.item())
+        info += 'Kl_G: {:.4f}, {:.4f}, '.format(lossG_rec_kl.item(), lossG_fake_kl.item())
        
         print(info)
         

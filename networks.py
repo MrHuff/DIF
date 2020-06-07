@@ -123,11 +123,11 @@ class IntroVAE(nn.Module):
         return y
     
     def encode(self, x):  
-        mu, logvar = data_parallel(self.encoder, x)
+        mu, logvar = self.encoder(x)
         return mu, logvar
         
     def decode(self, z):        
-        y = data_parallel(self.decoder, z)
+        y = self.decoder(z)
         return y
     
     def reparameterize(self, mu, logvar):
