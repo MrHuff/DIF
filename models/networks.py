@@ -1,15 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torch.autograd import Variable
-from torchvision import datasets, transforms
-import torch.nn.functional as F
-import torchvision.utils as vutils
-import math
-import time
-import torch.multiprocessing as multiprocessing
-from torch.nn.parallel import data_parallel
-
 
 class _Residual_Block(nn.Module): 
     def __init__(self, inc=64, outc=64, groups=1, scale=1.0):

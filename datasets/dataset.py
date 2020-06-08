@@ -1,7 +1,4 @@
-import torch
 import torch.utils.data as data
-
-from os import listdir
 from os.path import join
 from PIL import Image, ImageOps
 import random
@@ -52,7 +49,7 @@ class ImageDatasetFromFile(data.Dataset):
                 input_height=128, input_width=None, output_height=128, output_width=None,
                 crop_height=None, crop_width=None, is_random_crop=False, is_mirror=True, is_gray=False):
         super(ImageDatasetFromFile, self).__init__()
-                
+
         self.image_filenames = image_list 
         self.is_random_crop = is_random_crop
         self.is_mirror = is_mirror

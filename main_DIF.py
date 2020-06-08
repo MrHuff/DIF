@@ -15,7 +15,7 @@ from torch.cuda.amp import autocast,GradScaler
 
 print(torch.__version__)
 
-#TODO: Slap on a flow to the encoder. It shares all the encoder losses with the ME-objective.
+#TODO: Slap on a flow to the encoder. It shares all the encoder losses with the ME-objective. 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr_e', type=float, default=0.0002, help='learning rate of the encoder, default=0.0002')
 parser.add_argument('--lr_g', type=float, default=0.0002, help='learning rate of the generator, default=0.0002')
@@ -192,6 +192,10 @@ def main():
         optimizerG.zero_grad()
         optimizerE.zero_grad()
         scaler.scale(lossE).backward(retain_graph=True)
+        #Backprop everything on everything...
+
+
+
         # nn.utils.clip_grad_norm(model.encoder.parameters(), 1.0)
         for m in model.encoder.parameters():
             m.requires_grad=False
