@@ -1,6 +1,7 @@
 from __future__ import print_function
 import argparse
 import os
+from os import listdir
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
@@ -13,7 +14,6 @@ import torch.nn.functional as F
 from torchvision.utils import make_grid
 from torch.cuda.amp import autocast,GradScaler
 
-print(torch.__version__)
 
 #TODO: Slap on a flow to the encoder. It shares all the encoder losses with the ME-objective.
 parser = argparse.ArgumentParser()
@@ -69,6 +69,7 @@ def record_image(writer, image_list, cur_iter):
     
 
 def main():
+    print(torch.__version__)
     # torch.autograd.set_detect_anomaly(True)
     global opt, model
     opt = parser.parse_args()

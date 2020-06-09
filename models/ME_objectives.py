@@ -133,7 +133,9 @@ class MEstat(nn.Module):
         test_statistic = n_x * n_y / (n_x + n_y) * torch.sum(z * inv_z)
         return test_statistic
 
-    def forward(self,X,Y,debug_xi_hat=None):
+    def forward(self,data,c,debug_xi_hat=None):
+        X = data[~c,:]
+        Y = data[c,:]
         tmp_dev = X.device
         if not self.hotelling:
             T_x,T_y,X,Y = self.get_sample_witness(X,Y)
@@ -158,7 +160,7 @@ class MEstat(nn.Module):
             cov_Y,y_bar,k_Y,kY = self.calculate_hotelling(Y)
         pooled = 1./(n_x+n_y-2.) * cov_X +  cov_Y*1./(n_x+n_y-2.)
         z = torch.unsqueeze(x_bar-y_bar,1)
-        inv_z,_ = torch.solve(z,pooled + self.coeff*torch.eye(pooled.shape[0]).to(tmp_dev))
+        inv_z,_ = torch.solve(z.float(),pooled.float() + self.coeff*torch.eye(pooled.shape[0]).float().to(tmp_dev))
         test_statistic = n_x*n_y/(n_x + n_y) * torch.sum(z*inv_z)
 
         if test_statistic.data ==0 or test_statistic==float('inf') or test_statistic!=test_statistic: #The lengthscale be fucking me...

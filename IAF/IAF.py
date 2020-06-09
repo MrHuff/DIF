@@ -15,10 +15,10 @@ class IAF_no_h(nn.Module):
         self.tanh_op = nn.Tanh()
         self.flag = tanh_flag_h
         self.s_list = nn.ModuleList(
-            [nn.Sequential(AutoregressiveLinear(self.z_size , self.z_size), nn.ELU()) for i
+            [nn.Sequential(AutoregressiveLinear(self.z_size , self.z_size),nn.Sigmoid()) for i
              in range(depth)])
         self.m_list = nn.ModuleList(
-            [nn.Sequential(AutoregressiveLinear(self.z_size , self.z_size), nn.ELU()) for i
+            [nn.Sequential(AutoregressiveLinear(self.z_size , self.z_size),nn.Sigmoid()) for i
              in range(depth)])
 
     def forward(self, z):

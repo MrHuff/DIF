@@ -33,6 +33,10 @@ class DIF_net(IntroVAE):
     def flow_forward_only(self,xi):
         return self.flow.flow_pass_only(xi)
 
+    def encode_and_flow(self,x):
+        mu, logvar = self.encode(x)
+        xi,z,flow_log_det = self.reparameterize(mu, logvar)
+        return mu, logvar, z, flow_log_det,xi
 
 
 
