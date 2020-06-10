@@ -40,7 +40,7 @@ class linear_benchmark(nn.Module):
 
 class MEstat(nn.Module):
 
-    def __init__(self,J,ls=10,test_nx=1,test_ny=1,asymp_n=-1,kernel_type = 'rbf',linear_var=1e-6):
+    def __init__(self,J,ls=10,test_nx=1,test_ny=1,asymp_n=-1,kernel_type = 'rbf',linear_var=1e-3):
         super(MEstat, self).__init__()
         print(ls)
         self.ratio = J

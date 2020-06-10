@@ -13,8 +13,8 @@ CUDA_VISIBLE_DEVICES=4 python main.py  --hdim=512 --output_height=256 --channels
 #--hdim=512
 #--output_height=256
 #--channels="32, 64, 128, 256, 512, 512"
-#--m_plus=1200
-#--weight_rec=0.05
+#--m_plus=1400 #1200-1400
+#--weight_rec=0.05 #MIght wanna increase this or decrease KL... Need to tune parameters... which will suck
 #--weight_kl=0.1
 #--weight_neg=0.5
 #--num_vae=0
