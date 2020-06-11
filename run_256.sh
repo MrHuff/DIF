@@ -31,3 +31,26 @@ CUDA_VISIBLE_DEVICES=4 python main.py  --hdim=512 --output_height=256 --channels
 #--nEpochs=500
 #--class_indicator_file="/homes/rhu/data/celebA_hq_gender.csv"
 #--fp_16
+
+#Smaller experiment config!
+#--hdim=64
+#--output_height=64
+#--channels="32, 64, 128, 256"
+#--m_plus=120
+#--weight_rec=1.0
+#--weight_kl=0.5
+#--weight_neg=0.5
+#--num_vae=0
+#--dataroot="/homes/rhu/data/data64x64"
+#--trainsize=29000
+#--test_iter=1000
+#--save_iter=1
+#--start_epoch=0
+#--batchSize=32
+#--nrow=16
+#--lr_e=0.0002
+#--lr_g=0.0002
+#--cuda
+#--nEpochs=500
+#--workers=1
+#--test_iter=1000

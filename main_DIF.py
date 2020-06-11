@@ -157,9 +157,9 @@ def main():
 
             loss_rec =  model.reconstruction_loss(rec, real, True)
 
-            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()-flow_log_det_real.mean()
-            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()-flow_log_det_recon.mean()
-            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()-flow_log_det_fake.mean()
+            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()+flow_log_det_real.mean()
+            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()+flow_log_det_recon.mean()
+            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()+flow_log_det_fake.mean()
             loss_margin = lossE_real_kl + \
                           (F.relu(opt.m_plus-lossE_rec_kl) + \
                           F.relu(opt.m_plus-lossE_fake_kl)) * 0.5 * opt.weight_neg
@@ -182,17 +182,17 @@ def main():
 
         def flow_separate_backward():
             z_real = model.flow_forward_only(xi_real.detach())
-            z_recon = model.flow_forward_only(xi_recon.detach())
+            # z_recon = model.flow_forward_only(xi_recon.detach())
             T_real = me_obj(z_real,c)
-            T_recon = me_obj(z_recon,c)
-            return T_real+T_recon
+            # T_recon = me_obj(z_recon,c)
+            return T_real
         if opt.fp_16:
             with autocast():
-                T_loss = flow_separate_backward()
-            scaler.scale(-T_loss * opt.lambda_me).backward()
+                T_loss = -opt.lambda_me*flow_separate_backward()
+            scaler.scale(T_loss).backward()
         else:
-            T_loss = flow_separate_backward()
-            (-T_loss*opt.lambda_me).backward()
+            T_loss = -opt.lambda_me*flow_separate_backward()
+            T_loss.backward()
 
         #Backprop everything on everything...
         # nn.utils.clip_grad_norm(model.encoder.parameters(), 1.0)
@@ -205,8 +205,8 @@ def main():
         def update_G():
             rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)
             fake_mu, fake_logvar, z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake)
-            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() - flow_log_det_recon.mean()
-            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()-flow_log_det_fake.mean()
+            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() + flow_log_det_recon.mean()
+            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() + flow_log_det_fake.mean()
             lossG = (lossG_rec_kl + lossG_fake_kl) * 0.5 * opt.weight_kl
             return lossG,lossG_rec_kl,lossG_fake_kl
 

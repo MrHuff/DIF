@@ -1,7 +1,7 @@
 
 
 from models.networks import IntroVAE
-from IAF.IAF import IAF_no_h
+from IAF.IAF import IAF_no_h,IAF
 import torch
 
 
@@ -15,7 +15,7 @@ class DIF_net(IntroVAE):
                  flow_C=100,
                  tanh_flag=True):
         super(DIF_net, self).__init__(cdim=cdim, hdim=hdim, channels=channels, image_size=image_size)
-        self.flow = IAF_no_h(hdim,flow_depth,tanh_flag,flow_C)
+        self.flow = IAF(hdim,flow_depth,tanh_flag,flow_C)
 
     def forward(self, x):
         mu, logvar = self.encode(x)
@@ -27,7 +27,7 @@ class DIF_net(IntroVAE):
         std = logvar.mul(0.5).exp_()
         eps = torch.randn_like(mu)
         xi = eps.mul(std).add_(mu)
-        z,log_det = self.flow(xi)
+        z,log_det = self.flow(xi,std)
         return xi,z,log_det
 
     def flow_forward_only(self,xi):

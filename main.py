@@ -13,7 +13,7 @@ from models.networks import *
 import torch.nn.functional as F
 from torchvision.utils import make_grid
 from torch.cuda.amp import autocast,GradScaler
-
+import GPUtil
 
 #TODO: Slap on a flow to the encoder. It shares all the encoder losses with the ME-objective.
 parser = argparse.ArgumentParser()
@@ -87,7 +87,11 @@ def main():
     torch.manual_seed(opt.manualSeed)
     if opt.cuda:
         torch.cuda.manual_seed_all(opt.manualSeed)
-
+        base_gpu_list= GPUtil.getAvailable(order='memory',limit=2)
+        if 5 in base_gpu_list:
+            base_gpu_list.remove(5)
+        base_gpu = base_gpu_list[0]
+        torch.cuda.set_device(base_gpu)
     cudnn.benchmark = True
 
     if torch.cuda.is_available() and not opt.cuda:
