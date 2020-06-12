@@ -124,8 +124,7 @@ class IntroVAE(nn.Module):
     def reparameterize(self, mu, logvar):
         std = logvar.mul(0.5).exp_() 
         
-        eps = torch.cuda.FloatTensor(std.size()).normal_()       
-        eps = Variable(eps)
+        eps = torch.randn_like(std)
         
         return eps.mul(std).add_(mu)
     

@@ -28,6 +28,8 @@ parser.add_argument("--kernel", default="rbf", type=str, help="kernel choice")
 parser.add_argument("--lambda_me", type=float, default=1.0, help="Default=0.25")
 
 #TODO: figure out flow objective! Parallelize!
+#Choosing margin value is really hard...
+#2 ways forward, hyperparameter selection or better flows, latter is more feasible. Hard to get a sense of good hyperparameters
 
 def main():
     print(torch.__version__)
@@ -157,42 +159,45 @@ def main():
 
             loss_rec =  model.reconstruction_loss(rec, real, True)
 
-            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()+flow_log_det_real.mean()
-            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()+flow_log_det_recon.mean()
-            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()+flow_log_det_fake.mean()
+            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()-flow_log_det_real.mean()
+            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()-flow_log_det_recon.mean()
+            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()-flow_log_det_fake.mean()
             loss_margin = lossE_real_kl + \
                           (F.relu(opt.m_plus-lossE_rec_kl) + \
                           F.relu(opt.m_plus-lossE_fake_kl)) * 0.5 * opt.weight_neg
 
             lossE = loss_rec  * opt.weight_rec + loss_margin * opt.weight_kl
-            return lossE,rec,fake,loss_rec,lossE_real_kl,lossE_rec_kl,lossE_fake_kl,xi_real,xi_recon
+            return lossE,rec,fake,loss_rec,lossE_real_kl,\
+                   lossE_rec_kl,lossE_fake_kl,xi_real,xi_recon,real_logvar,rec_logvar
 
         #=========== Update E ================
         if opt.fp_16:
             with autocast():
-                lossE,rec,fake,loss_rec,lossE_real_kl,lossE_rec_kl,lossE_fake_kl,xi_real,xi_recon= update_E()
+                lossE,rec,fake,loss_rec,lossE_real_kl,\
+                lossE_rec_kl,lossE_fake_kl,xi_real,xi_recon,real_logvar,rec_logvar= update_E()
             optimizerG.zero_grad()
             optimizerE.zero_grad()
             scaler.scale(lossE).backward(retain_graph=True)
         else:
-            lossE,rec,fake,loss_rec,lossE_real_kl,lossE_rec_kl,lossE_fake_kl,xi_real,xi_recon = update_E()
+            lossE,rec,fake,loss_rec,lossE_real_kl,lossE_rec_kl,\
+            lossE_fake_kl,xi_real,xi_recon,real_logvar,rec_logvar = update_E()
             optimizerG.zero_grad()
             optimizerE.zero_grad()
             lossE.backward(retain_graph=True)
 
-        def flow_separate_backward():
-            z_real = model.flow_forward_only(xi_real.detach())
-            # z_recon = model.flow_forward_only(xi_recon.detach())
-            T_real = me_obj(z_real,c)
-            # T_recon = me_obj(z_recon,c)
-            return T_real
-        if opt.fp_16:
-            with autocast():
-                T_loss = -opt.lambda_me*flow_separate_backward()
-            scaler.scale(T_loss).backward()
-        else:
-            T_loss = -opt.lambda_me*flow_separate_backward()
-            T_loss.backward()
+        # def flow_separate_backward():
+        #     z_real = model.flow_forward_only(xi_real.detach(),real_logvar.detach())
+        #     z_recon = model.flow_forward_only(xi_recon.detach(),rec_logvar.detach())
+        #     T_real = me_obj(z_real,c)
+        #     T_recon = me_obj(z_recon,c)
+        #     return T_real+T_recon
+        # if opt.fp_16:
+        #     with autocast():
+        #         T_loss = -opt.lambda_me*flow_separate_backward()
+        #     scaler.scale(T_loss).backward()
+        # else:
+        #     T_loss = -opt.lambda_me*flow_separate_backward()
+        #     T_loss.backward()
 
         #Backprop everything on everything...
         # nn.utils.clip_grad_norm(model.encoder.parameters(), 1.0)
@@ -205,8 +210,8 @@ def main():
         def update_G():
             rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)
             fake_mu, fake_logvar, z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake)
-            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() + flow_log_det_recon.mean()
-            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() + flow_log_det_fake.mean()
+            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() - flow_log_det_recon.mean()
+            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() - flow_log_det_fake.mean()
             lossG = (lossG_rec_kl + lossG_fake_kl) * 0.5 * opt.weight_kl
             return lossG,lossG_rec_kl,lossG_fake_kl
 
@@ -233,7 +238,7 @@ def main():
         info += 'Kl_E: {:.4f}, {:.4f}, {:.4f}, '.format(lossE_real_kl.item(),
                                 lossE_rec_kl.item(), lossE_fake_kl.item())
         info += 'Kl_G: {:.4f}, {:.4f}, '.format(lossG_rec_kl.item(), lossG_fake_kl.item())
-        info += 'ME_flow: {:.4f}'.format(T_loss.item())
+        # info += 'ME_flow: {:.4f}'.format(T_loss.item())
 
         print(info)
         
@@ -243,7 +248,10 @@ def main():
                 if cur_iter % 1000 == 0:
                     record_image(writer, [real, rec, fake], cur_iter)   
             else:
-                vutils.save_image(torch.cat([real, rec, fake], dim=0).data.cpu(), '{}/image_{}.jpg'.format(opt.outf, cur_iter),nrow=opt.nrow)             
+                vutils.save_image(torch.cat([real, rec, fake], dim=0).data.cpu(), '{}/image_{}.jpg'.format(opt.outf, cur_iter),nrow=opt.nrow)
+                #Do some more stuff here... check umap representations...
+
+
             
                   
     #----------------Train by epochs--------------------------

@@ -1,1 +1,1 @@
-from models.made import MADE
+from IAF.models.made import MADE

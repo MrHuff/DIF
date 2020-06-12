@@ -45,7 +45,7 @@ class IAF(LayerKL):
 
         # Initially s_t should be large, i.e. 1 or 2.
         s_t = self.s_t(z, h) + 1.5
-        sigma_t = F.sigmoid(s_t)
+        sigma_t = torch.sigmoid(s_t)
         m_t = self.m_t(z, h)
 
         # log |det Jac|
@@ -53,3 +53,17 @@ class IAF(LayerKL):
 
         # transformation
         return sigma_t * z + (1 - sigma_t) * m_t
+
+class IAF_mod(IAF):
+    def __init__(self, size=1, context_size=1, auto_regressive_hidden=1):
+        super().__init__(size=size,context_size=context_size,auto_regressive_hidden=auto_regressive_hidden)
+
+    def forward(self, z, h=None):
+        if h is None:
+            h = torch.zeros_like(z)
+
+        # Initially s_t should be large, i.e. 1 or 2.
+        s_t = self.s_t(z, h) + 1.5
+        sigma_t = torch.sigmoid(s_t)
+        m_t = self.m_t(z, h)
+        return sigma_t * z + (1 - sigma_t) * m_t,self.determine_log_det_jac(sigma_t)

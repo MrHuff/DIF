@@ -1,2 +1,2 @@
-from flows.planar import Planar
-from flows.iaf import IAF
+from IAF.flows.planar import Planar
+from IAF.flows.iaf import IAF

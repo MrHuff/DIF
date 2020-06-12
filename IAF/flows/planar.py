@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from layers.base import LayerKL
+from IAF.layers.base import LayerKL
 
 
 class Planar(LayerKL):
