@@ -260,11 +260,11 @@ def load_model(model, pretrained):
     model_dict.update(pretrained_dict) 
     model.load_state_dict(model_dict)
             
-def save_checkpoint(model, epoch, iteration, prefix=""):
-    model_out_path = "model/" + prefix +"model_epoch_{}_iter_{}.pth".format(epoch, iteration)
+def save_checkpoint(model, epoch, iteration, prefix="",folder_name = "model"):
+    model_out_path = f"{folder_name}/" + prefix +"model_epoch_{}_iter_{}.pth".format(epoch, iteration)
     state = {"epoch": epoch ,"model": model}
-    if not os.path.exists("model/"):
-        os.makedirs("model/")
+    if not os.path.exists(f"{folder_name}/"):
+        os.makedirs(f"{folder_name}/")
 
     torch.save(state, model_out_path)
         

@@ -12,8 +12,11 @@ class AutoRegressiveNN(MADE):
         # remove MADE output layer
         del self.layers[len(self.layers) - 1]
 
-    def forward(self, z, h):
-        return self.layers(z) + self.context(h)
+    def forward(self, z, h=None):
+        if h is None:
+            return self.layers(z)
+        else:
+            return self.layers(z) + self.context(h)
 
 
 class IAF(LayerKL):
@@ -40,9 +43,6 @@ class IAF(LayerKL):
         return torch.log(sigma_t + 1e-6).sum(1)
 
     def forward(self, z, h=None):
-        if h is None:
-            h = torch.zeros(self.context_size)
-
         # Initially s_t should be large, i.e. 1 or 2.
         s_t = self.s_t(z, h) + 1.5
         sigma_t = torch.sigmoid(s_t)
@@ -59,11 +59,8 @@ class IAF_mod(IAF):
         super().__init__(size=size,context_size=context_size,auto_regressive_hidden=auto_regressive_hidden)
 
     def forward(self, z, h=None):
-        if h is None:
-            h = torch.zeros_like(z)
-
         # Initially s_t should be large, i.e. 1 or 2.
-        s_t = self.s_t(z, h) + 1.5
+        s_t = self.s_t(z, h) + 2.0
         sigma_t = torch.sigmoid(s_t)
         m_t = self.m_t(z, h)
         return sigma_t * z + (1 - sigma_t) * m_t,self.determine_log_det_jac(sigma_t)

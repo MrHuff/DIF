@@ -17,6 +17,8 @@ import pandas as pd
 import GPUtil
 from utils.umap import make_binary_class_umap_plot
 from main import parser,record_image,record_scalar,str_to_list,load_model,save_checkpoint
+from itertools import chain
+
 parser.add_argument('--class_indicator_file', default="/home/file.csv", type=str, help='class indicator csv file')
 parser.add_argument('--fp_16', action='store_true', help='enables fp_16')
 parser.add_argument('--tanh_flag', action='store_true', help='enables tanh')
@@ -32,7 +34,8 @@ parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
 #TODO: figure out flow objective! Parallelize!
 #Choosing margin value is really hard...
 #2 ways forward, hyperparameter selection or better flows, latter is more feasible. Hard to get a sense of good hyperparameters
-
+# Figure out reasonable architecture.
+# Different parametrization strategies.. either neutralize flow or let it become part of each component
 def subset_latents(data,c):
     y_class = data[c,:]
     x_class = data[~c,:]
@@ -45,7 +48,8 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
-
+    param_suffix = f"_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}"
+    opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)
     except OSError:
@@ -78,7 +82,7 @@ def main():
         load_model(model, opt.pretrained)
     print(model)
             
-    optimizerE = optim.Adam(model.encoder.parameters(), lr=opt.lr_e)
+    optimizerE = optim.Adam(chain(model.encoder.parameters(),model.flow.parameters()), lr=opt.lr_e)
     optimizerG = optim.Adam(model.decoder.parameters(), lr=opt.lr_g)
 
     if opt.fp_16:
@@ -165,21 +169,23 @@ def main():
         
         loss_info = '[loss_rec, loss_margin, lossE_real_kl, lossE_rec_kl, lossE_fake_kl, lossG_rec_kl, lossG_fake_kl,]'
 
-        #Problem is flow is trained with competing objectives on the same entity...
+        #Problem is flow is trained with competing objectives on the same entity? Still unstable training!
+        # Tune parameters?! Fake part is giving me a hard time...
 
         def update_E():
 
             fake = model.sample(noise)
             real_mu, real_logvar, z_real, rec,flow_log_det_real,xi_real = model(real)
-            # rec_mu, rec_logvar,z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec.detach())
-            # fake_mu, fake_logvar,z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake.detach())
-            rec_mu, rec_logvar = model.encode(rec.detach())
-            fake_mu, fake_logvar = model.encode(fake.detach())
+
+            rec_mu, rec_logvar,z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec.detach())
+            fake_mu, fake_logvar,z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake.detach())
+            # rec_mu, rec_logvar = model.encode(rec.detach())
+            # fake_mu, fake_logvar = model.encode(fake.detach())
             loss_rec =  model.reconstruction_loss(rec, real, True)
 
-            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()#-flow_log_det_real.mean()
-            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()#-flow_log_det_recon.mean()
-            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()#-flow_log_det_fake.mean()
+            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()-flow_log_det_real.mean()
+            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()-flow_log_det_recon.mean()
+            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()-flow_log_det_fake.mean()
             loss_margin = lossE_real_kl +(torch.relu(opt.m_plus-lossE_rec_kl)+torch.relu(opt.m_plus-lossE_fake_kl)) * 0.5 * opt.weight_neg
             #  + \
             # Also, ok might want to add more parametrization of hyper parameters.
@@ -211,7 +217,7 @@ def main():
         #     z_recon = model.flow_forward_only(xi_recon.detach(),rec_logvar.detach())
         #     T_real = me_obj(z_real,c)
         #     T_recon = me_obj(z_recon,c)
-        #     return T_real+T_recon
+        #     return T_real#+T_recon
         # if opt.fp_16:
         #     with autocast():
         #         T_loss = -opt.lambda_me*flow_separate_backward()
@@ -222,17 +228,18 @@ def main():
 
         #Backprop everything on everything... NOT! Make sure the FLOW trains only one ONE of the saddlepoint objectives!
         # nn.utils.clip_grad_norm(model.encoder.parameters(), 1.0)
+
         for m in model.encoder.parameters():
             m.requires_grad=False
-        # for m in model.flow.parameters():
-        #     m.requires_grad=False
+        for m in model.flow.parameters(): #Controls whether which objectives apply to flow
+            m.requires_grad=False
 
         #========= Update G ==================
         def update_G():
             rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)
             fake_mu, fake_logvar, z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake)
-            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() - flow_log_det_recon.mean()
-            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() - flow_log_det_fake.mean()
+            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() #- flow_log_det_recon.mean()
+            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() #- flow_log_det_fake.mean()
             lossG = (lossG_rec_kl + lossG_fake_kl) * 0.5 * opt.weight_kl
             return lossG,lossG_rec_kl,lossG_fake_kl
 
@@ -252,8 +259,10 @@ def main():
             optimizerG.step()
         for m in model.encoder.parameters():
             m.requires_grad = True
-        # for m in model.flow.parameters():
-        #     m.requires_grad = True
+        for m in model.flow.parameters(): #Controls whether which objectives apply to flow
+            m.requires_grad=True
+        #Write down setups, carefully consider gradient updates to avoid positive feedback loop!
+
         #. The key is to hold the regularization term LREG in Eq. (11) and Eq. (12) below the margin value m for most of the time
         info += 'Rec: {:.4f}, '.format(loss_rec.item()*opt.weight_rec)
         info += 'Margin loss: {:.4f}, '.format(opt.weight_kl*loss_margin.item())
@@ -300,7 +309,7 @@ def main():
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):  
         #save models
         save_epoch = (epoch//opt.save_iter)*opt.save_iter   
-        save_checkpoint(model, save_epoch, 0, '')
+        save_checkpoint(model, save_epoch, 0, '',folder_name=f"model{param_suffix}")
         
         model.train()
         for iteration, (batch,c) in enumerate(train_data_loader, 0):

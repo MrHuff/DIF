@@ -43,7 +43,10 @@ class DIF_net(IntroVAE):
         return mu, logvar, z, flow_log_det,xi
 
 
-
+    def sample(self,xi):
+        with torch.no_grad():
+            z,_ = self.flow(xi)
+        return self.decode(z.detach())
 
 
 
