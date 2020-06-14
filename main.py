@@ -216,7 +216,10 @@ def main():
         scaler.step(optimizerE)#.step()
         scaler.step(optimizerG)#.step()
         scaler.update()
-        info += 'Rec: {:.4f}, '.format(loss_rec.item())
+        info += 'Rec: {:.4f}, '.format(loss_rec.item()*opt.weight_rec)
+        info += 'Margin loss: {:.4f}, '.format(opt.weight_kl*loss_margin.item())
+        info += 'Total loss E: {:.4f}, '.format(lossE.item())
+        info += 'Total loss G: {:.4f}, '.format(lossG.item())
         info += 'Kl_E: {:.4f}, {:.4f}, {:.4f}, '.format(lossE_real_kl.item(),
                                 lossE_rec_kl.item(), lossE_fake_kl.item())
         info += 'Kl_G: {:.4f}, {:.4f}, '.format(lossG_rec_kl.item(), lossG_fake_kl.item())

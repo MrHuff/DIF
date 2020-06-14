@@ -18,6 +18,7 @@ class DIF_net(IntroVAE):
                  tanh_flag=True):
         super(DIF_net, self).__init__(cdim=cdim, hdim=hdim, channels=channels, image_size=image_size)
         self.flow = IAF_flow(hdim,flow_depth,tanh_flag,flow_C)
+        # self.flow_D = IAF_flow(hdim,flow_depth,tanh_flag,flow_C)
 
     def forward(self, x):
         mu, logvar = self.encode(x)

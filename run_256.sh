@@ -54,3 +54,30 @@ CUDA_VISIBLE_DEVICES=4 python main.py  --hdim=512 --output_height=256 --channels
 #--nEpochs=500
 #--workers=1
 #--test_iter=1000
+
+#--hdim=512
+#--output_height=256
+#--channels="32, 64, 128, 256, 512, 512"
+#--m_plus=1200
+#--weight_rec=0.05
+#--weight_kl=0.01
+#--weight_neg=0.01
+#--num_vae=0
+#--dataroot="/homes/rhu/data/data256x256"
+#--trainsize=29000
+#--test_iter=1000
+#--save_iter=1
+#--start_epoch=0
+#--batchSize=16
+#--nrow=8
+#--lr_e=0.0002
+#--lr_g=0.0002
+#--cuda
+#--nEpochs=500
+#--workers=1
+#--test_iter=1000
+#--J=0.25
+#--class_indicator_file="/homes/rhu/data/celebA_hq_gender.csv"
+#--lambda_me=1e-1
+#--flow_depth=10
+#--hdim=512 --output_height=256 "--channels=32, 64, 128, 256, 512, 512" --m_plus=1200 --weight_rec=0.05 --weight_kl=0.01 --weight_neg=0.01 --num_vae=0 --dataroot=/homes/rhu/data/data256x256 --trainsize=29000 --test_iter=1000 --save_iter=1 --start_epoch=0 --batchSize=16 --nrow=8 --lr_e=0.0002 --lr_g=0.0002 --cuda --nEpochs=500 --workers=1 --test_iter=1000 --J=0.25 --class_indicator_file=/homes/rhu/data/celebA_hq_gender.csv --lambda_me=1e-1 --flow_depth=10
