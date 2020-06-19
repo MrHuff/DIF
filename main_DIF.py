@@ -36,6 +36,7 @@ parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
 #2 ways forward, hyperparameter selection or better flows, latter is more feasible. Hard to get a sense of good hyperparameters
 # Figure out reasonable architecture.
 # Different parametrization strategies.. either neutralize flow or let it become part of each component
+# Try not having a flow, seems to be complicating training...
 def subset_latents(data,c):
     y_class = data[c,:]
     x_class = data[~c,:]
@@ -48,7 +49,7 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
-    param_suffix = f"_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}"
+    param_suffix = f"_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}"
     opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)
@@ -78,13 +79,17 @@ def main():
                     hdim=opt.hdim,
                     channels=str_to_list(opt.channels),
                     image_size=opt.output_height).cuda(base_gpu)
+
+    # model = IntroVAE(cdim=3, hdim=opt.hdim, channels=str_to_list(opt.channels), image_size=opt.output_height).cuda()
+
     if opt.pretrained:
         load_model(model, opt.pretrained)
     print(model)
             
-    optimizerE = optim.Adam(chain(model.encoder.parameters(),model.flow.parameters()), lr=opt.lr_e)
+    # optimizerE = optim.Adam(chain(model.encoder.parameters(),model.flow.parameters()), lr=opt.lr_e)
+    # optimizerG = optim.Adam(model.decoder.parameters(), lr=opt.lr_g)
+    optimizerE = optim.Adam(model.encoder.parameters(), lr=opt.lr_e)
     optimizerG = optim.Adam(model.decoder.parameters(), lr=opt.lr_g)
-
     if opt.fp_16:
         scaler = GradScaler()
 
@@ -164,6 +169,7 @@ def main():
         batch_size = batch.size(0)
         c = c.cuda(base_gpu)
         noise = torch.randn(batch_size, opt.hdim).cuda(base_gpu)
+        # noise_logvar = torch.zeros_like(noise)
         real= batch.cuda(base_gpu)
         info = "\n====> Cur_iter: [{}]: Epoch[{}]({}/{}): time: {:4.4f}: ".format(cur_iter, epoch, iteration, len(train_data_loader), time.time()-start_time)
         
@@ -174,49 +180,51 @@ def main():
 
         def update_E():
 
+            # fake = model.sample(noise,noise_logvar)
             fake = model.sample(noise)
-            real_mu, real_logvar, z_real, rec,flow_log_det_real,xi_real = model(real)
-
-            rec_mu, rec_logvar,z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec.detach())
-            fake_mu, fake_logvar,z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake.detach())
-            # rec_mu, rec_logvar = model.encode(rec.detach())
-            # fake_mu, fake_logvar = model.encode(fake.detach())
+            # real_mu, real_logvar, z_real, rec,flow_log_det_real,xi_real = model(real)
+            real_mu, real_logvar, z, rec = model(real)
+            # rec_mu, rec_logvar,z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec.detach())
+            # fake_mu, fake_logvar,z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake.detach())
+            rec_mu, rec_logvar = model.encode(rec.detach())
+            fake_mu, fake_logvar = model.encode(fake.detach())
             loss_rec =  model.reconstruction_loss(rec, real, True)
 
-            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()-flow_log_det_real.mean()
-            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()-flow_log_det_recon.mean()
-            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()-flow_log_det_fake.mean()
+            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()#-flow_log_det_real.mean()
+            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()#-flow_log_det_recon.mean()
+            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()#-flow_log_det_fake.mean()
             loss_margin = lossE_real_kl +(torch.relu(opt.m_plus-lossE_rec_kl)+torch.relu(opt.m_plus-lossE_fake_kl)) * 0.5 * opt.weight_neg
             #  + \
+            T_real = me_obj(z, c)
             # Also, ok might want to add more parametrization of hyper parameters.
             #weight neg should control adversarial objective. Want fakes and (reconstructions?!) to deviate from prior, want reals to be close to prior.
             #Don't know why reconstructions should be adversarial... Might want to rebalance
-            lossE = loss_rec  * opt.weight_rec + loss_margin * opt.weight_kl
+            lossE = loss_rec  * opt.weight_rec + loss_margin * opt.weight_kl-opt.lambda_me*T_real
             return lossE,rec,fake,loss_rec,lossE_real_kl,\
-                   lossE_rec_kl,lossE_fake_kl,real_logvar,rec_logvar,loss_margin
+                   lossE_rec_kl,lossE_fake_kl,real_logvar,rec_logvar,loss_margin,T_real
 
         #=========== Update E ================
         if opt.fp_16:
             with autocast():
                 lossE,rec,fake,loss_rec,lossE_real_kl,\
                 lossE_rec_kl,lossE_fake_kl,\
-                real_logvar,rec_logvar,loss_margin= update_E()
+                real_logvar,rec_logvar,loss_margin,T_loss= update_E()
             optimizerG.zero_grad()
             optimizerE.zero_grad()
             scaler.scale(lossE).backward(retain_graph=True)
         else:
             lossE,rec,fake,loss_rec,lossE_real_kl,lossE_rec_kl,\
             lossE_fake_kl,real_logvar\
-                ,rec_logvar,loss_margin = update_E()
+                ,rec_logvar,loss_margin,T_loss = update_E()
             optimizerG.zero_grad()
             optimizerE.zero_grad()
             lossE.backward(retain_graph=True)
 
         # def flow_separate_backward():
-        #     z_real = model.flow_forward_only(xi_real.detach(),real_logvar.detach())
-        #     z_recon = model.flow_forward_only(xi_recon.detach(),rec_logvar.detach())
-        #     T_real = me_obj(z_real,c)
-        #     T_recon = me_obj(z_recon,c)
+        #     # z_real = model.flow_forward_only(xi_real.detach(),real_logvar.detach())
+        #     # z_recon = model.flow_forward_only(xi_recon.detach(),rec_logvar.detach())
+        #     T_real = me_obj(xi_real,c)
+        #     # T_recon = me_obj(z_recon,c)
         #     return T_real#+T_recon
         # if opt.fp_16:
         #     with autocast():
@@ -231,13 +239,15 @@ def main():
 
         for m in model.encoder.parameters():
             m.requires_grad=False
-        for m in model.flow.parameters(): #Controls whether which objectives apply to flow
-            m.requires_grad=False
+        # for m in model.flow.parameters(): #Controls whether which objectives apply to flow
+        #     m.requires_grad=False
 
         #========= Update G ==================
         def update_G():
-            rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)
-            fake_mu, fake_logvar, z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake)
+            # rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)
+            # fake_mu, fake_logvar, z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake)
+            rec_mu, rec_logvar = model.encode(rec)
+            fake_mu, fake_logvar = model.encode(fake)
             lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() #- flow_log_det_recon.mean()
             lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() #- flow_log_det_fake.mean()
             lossG = (lossG_rec_kl + lossG_fake_kl) * 0.5 * opt.weight_kl
@@ -259,8 +269,8 @@ def main():
             optimizerG.step()
         for m in model.encoder.parameters():
             m.requires_grad = True
-        for m in model.flow.parameters(): #Controls whether which objectives apply to flow
-            m.requires_grad=True
+        # for m in model.flow.parameters(): #Controls whether which objectives apply to flow
+        #     m.requires_grad=True
         #Write down setups, carefully consider gradient updates to avoid positive feedback loop!
 
         #. The key is to hold the regularization term LREG in Eq. (11) and Eq. (12) below the margin value m for most of the time
@@ -271,7 +281,7 @@ def main():
         info += 'Kl_E: {:.4f}, {:.4f}, {:.4f}, '.format(lossE_real_kl.item(),
                                 lossE_rec_kl.item(), lossE_fake_kl.item())
         info += 'Kl_G: {:.4f}, {:.4f}, '.format(lossG_rec_kl.item(), lossG_fake_kl.item())
-        # info += 'ME_flow: {:.4f}'.format(T_loss.item())
+        info += 'ME_flow: {:.4f}'.format(T_loss.item())
 
         print(info)
         
@@ -282,28 +292,29 @@ def main():
                     record_image(writer, [real, rec, fake], cur_iter)   
             else:
                 vutils.save_image(torch.cat([real, rec, fake], dim=0).data.cpu(), '{}/image_{}.jpg'.format(opt.outf, cur_iter),nrow=opt.nrow)
-                with torch.no_grad():
-                    list_xi = []
-                    list_z = []
-                    list_c = []
-                    for iteration,(batch,c) in enumerate(train_data_loader,0):
-
-                        if iteration<20:
-                            c = c.cuda(base_gpu)
-                            batch = batch.cuda(base_gpu)
-                            list_c.append(c)
-                            real_mu, real_logvar, z_real, rec, flow_log_det_real, xi_real = model(batch)
-                            list_z.append(z_real)
-                            list_xi.append(xi_real)
-                        else:
-                            break
-                    big_c = torch.cat(list_c,dim=0)
-                    big_xi = torch.cat(list_xi,dim=0)
-                    big_z = torch.cat(list_z,dim=0)
-                    x_class_xi, y_class_xi = subset_latents(big_xi,big_c)
-                    make_binary_class_umap_plot(x_class_xi,y_class_xi,opt.outf,cur_iter,'xi_plot')
-                    x_class_z, y_class_z = subset_latents(big_z,big_c)
-                    make_binary_class_umap_plot(x_class_z,y_class_z,opt.outf,cur_iter,'z_plot')
+                # with torch.no_grad():
+                #     list_xi = []
+                #     list_z = []
+                #     list_c = []
+                #     for iteration,(batch,c) in enumerate(train_data_loader,0):
+                #
+                #         if iteration<20:
+                #             c = c.cuda(base_gpu)
+                #             batch = batch.cuda(base_gpu)
+                #             list_c.append(c)
+                #             real_mu, real_logvar, z_real, rec = model(batch)
+                #             # real_mu, real_logvar, z_real, rec, flow_log_det_real, xi_real = model(batch)
+                #             list_z.append(z_real)
+                #             list_xi.append(real_mu)
+                #         else:
+                #             break
+                #     big_c = torch.cat(list_c,dim=0)
+                #     big_xi = torch.cat(list_xi,dim=0)
+                #     big_z = torch.cat(list_z,dim=0)
+                #     x_class_xi, y_class_xi = subset_latents(big_xi,big_c)
+                #     make_binary_class_umap_plot(x_class_xi,y_class_xi,opt.outf,cur_iter,'xi_plot')
+                #     x_class_z, y_class_z = subset_latents(big_z,big_c)
+                #     make_binary_class_umap_plot(x_class_z,y_class_z,opt.outf,cur_iter,'z_plot')
 
     #----------------Train by epochs--------------------------
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):  

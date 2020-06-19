@@ -17,36 +17,48 @@ class DIF_net(IntroVAE):
                  flow_C=100,
                  tanh_flag=True):
         super(DIF_net, self).__init__(cdim=cdim, hdim=hdim, channels=channels, image_size=image_size)
-        self.flow = IAF_flow(hdim,flow_depth,tanh_flag,flow_C)
+        self.tanh_flag=tanh_flag
+        self.C = flow_C
+        # self.flow = IAF_flow(hdim,flow_depth,tanh_flag,flow_C)
         # self.flow_D = IAF_flow(hdim,flow_depth,tanh_flag,flow_C)
-
-    def forward(self, x):
-        mu, logvar = self.encode(x)
-        xi,z,flow_log_det = self.reparameterize(mu, logvar)
-        y = self.decode(z)
-        return mu, logvar, z, y, flow_log_det,xi
 
     def reparameterize(self, mu, logvar):
         std = logvar.mul(0.5).exp_()
-        eps = torch.randn_like(mu)
-        xi = eps.mul(std).add_(mu)
-        z,log_det = self.flow(xi,logvar)
-        return xi,z,log_det
 
-    def flow_forward_only(self,xi,logvar=None):
-        output,_ = self.flow(xi, logvar)
-        return output
+        eps = torch.randn_like(std)
+        z = eps.mul(std).add_(mu)
+        if self.tanh_flag:
+            return self.C*torch.tanh(z/self.C)
+        else:
+            return z
 
-    def encode_and_flow(self,x):
-        mu, logvar = self.encode(x)
-        xi,z,flow_log_det = self.reparameterize(mu, logvar)
-        return mu, logvar, z, flow_log_det,xi
-
-
-    def sample(self,xi):
-        with torch.no_grad():
-            z,_ = self.flow(xi)
-        return self.decode(z.detach())
+    # def forward(self, x):
+    #     mu, logvar = self.encode(x)
+    #     xi,z,flow_log_det = self.reparameterize(mu, logvar)
+    #     y = self.decode(z)
+    #     return mu, logvar, z, y, flow_log_det,xi
+    #
+    # def reparameterize(self, mu, logvar):
+    #     std = logvar.mul(0.5).exp_()
+    #     eps = torch.randn_like(mu)
+    #     xi = eps.mul(std).add_(mu)
+    #     z,log_det = self.flow(xi,logvar)
+    #     return xi,z,log_det
+    #
+    # def flow_forward_only(self,xi,logvar=None):
+    #     output,_ = self.flow(xi, logvar)
+    #     return output
+    #
+    # def encode_and_flow(self,x):
+    #     mu, logvar = self.encode(x)
+    #     xi,z,flow_log_det = self.reparameterize(mu, logvar)
+    #     return mu, logvar, z, flow_log_det,xi
+    #
+    #
+    # def sample(self,xi,logvar):
+    #     with torch.no_grad():
+    #         z,_ = self.flow(xi,logvar)
+    #     return self.decode(z.detach())
 
 
 

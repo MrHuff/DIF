@@ -175,7 +175,6 @@ class MEstat(nn.Module):
             print(kX)
             print(kY)
             print(_tmp.min(),_tmp.max())
-            print(debug_xi_hat.detach().min(),debug_xi_hat.detach().max())
             print(sig)
             print(n_x*n_y/(n_x + n_y))
             print(pooled)
