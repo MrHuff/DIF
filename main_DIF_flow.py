@@ -16,40 +16,16 @@ from torch.cuda.amp import autocast,GradScaler
 import pandas as pd
 import GPUtil
 from utils.umap import make_binary_class_umap_plot
-from main import parser,record_image,record_scalar,str_to_list,load_model,save_checkpoint
+from main_DIF import parser,record_image,record_scalar,str_to_list,save_checkpoint,load_model,subset_latents
 from itertools import chain
-
-parser.add_argument('--class_indicator_file', default="/home/file.csv", type=str, help='class indicator csv file')
-parser.add_argument('--fp_16', action='store_true', help='enables fp_16')
-parser.add_argument('--tanh_flag', action='store_true', help='enables tanh')
-parser.add_argument('--flow_depth', type=int, default=3, help='flow depth')
-parser.add_argument("--C", type=float, default=100.0, help="Default=100.0")
-parser.add_argument("--J", type=float, default=0.25, help="Default=0.25")
-parser.add_argument("--asymp_n", type=float, default=-1, help="Default=0.25")
-parser.add_argument("--kernel", default="rbf", type=str, help="kernel choice")
-parser.add_argument("--lambda_me", type=float, default=1.0, help="Default=0.25")
-parser.add_argument('--umap', action='store_true', help='visualizes umap')
-parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
-
-#TODO: figure out flow objective! Parallelize!
-#Choosing margin value is really hard...
-#2 ways forward, hyperparameter selection or better flows, latter is more feasible. Hard to get a sense of good hyperparameters
-# Figure out reasonable architecture.
-# Different parametrization strategies.. either neutralize flow or let it become part of each component
-# Try not having a flow, seems to be complicating training...
-def subset_latents(data,c):
-    y_class = data[c,:]
-    x_class = data[~c,:]
-    return x_class.cpu().numpy(),y_class.cpu().numpy()
-
-
+#Did stabilize training... but why is the ME-stat negative?!
 def main():
     print(torch.__version__)
     # torch.autograd.set_detect_anomaly(True)
     global opt, model
     opt = parser.parse_args()
     print(opt)
-    param_suffix = f"_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}"
+    param_suffix = f"_flow_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}"
     opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)
@@ -72,7 +48,7 @@ def main():
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
     #--------------build models -------------------------
-    model = DIF_net(flow_C=opt.C,
+    model = DIF_net_flow(flow_C=opt.C,
                     flow_depth=opt.flow_depth,
                     tanh_flag=opt.tanh_flag,
                     cdim=3,
@@ -86,9 +62,7 @@ def main():
         load_model(model, opt.pretrained)
     print(model)
             
-    # optimizerE = optim.Adam(chain(model.encoder.parameters(),model.flow.parameters()), lr=opt.lr_e)
-    # optimizerG = optim.Adam(model.decoder.parameters(), lr=opt.lr_g)
-    optimizerE = optim.Adam(model.encoder.parameters(), lr=opt.lr_e)
+    optimizerE = optim.Adam(chain(model.encoder.parameters(),model.flow.parameters()), lr=opt.lr_e)
     optimizerG = optim.Adam(model.decoder.parameters(), lr=opt.lr_g)
     if opt.fp_16:
         scaler = GradScaler()
@@ -130,14 +104,14 @@ def main():
         #=========== Update E ================
 
         def VAE_forward():
-            # real_mu, real_logvar, z_real, rec, flow_log_det_real, xi_real = model(real)
-            real_mu, real_logvar, z_real, rec = model(real)
+            real_mu, real_logvar, z_real, rec, flow_log_det_real, xi_real = model(real)
             loss_rec = model.reconstruction_loss(rec, real, True)
-            loss_kl = model.kl_loss(real_mu, real_logvar).mean() #- flow_log_det_real.mean()
+            loss_kl = model.kl_loss(real_mu, real_logvar).mean() - flow_log_det_real.mean()
             if opt.lambda_me==0:
                 T = torch.zeros_like(loss_rec)
             else:
-                T = me_obj(z_real, c)*opt.lambda_me
+                z = model.flow_forward_only(xi_real.detach(),real_logvar.detach())
+                T = me_obj(z, c)*opt.lambda_me
             loss = loss_rec + loss_kl - T
             return loss,loss_rec,loss_kl,rec,T
 
@@ -174,7 +148,7 @@ def main():
         batch_size = batch.size(0)
         c = c.cuda(base_gpu)
         noise = torch.randn(batch_size, opt.hdim).cuda(base_gpu)
-        # noise_logvar = torch.zeros_like(noise)
+        noise_logvar = torch.zeros_like(noise)
         real= batch.cuda(base_gpu)
         info = "\n====> Cur_iter: [{}]: Epoch[{}]({}/{}): time: {:4.4f}: ".format(cur_iter, epoch, iteration, len(train_data_loader), time.time()-start_time)
         
@@ -185,54 +159,51 @@ def main():
 
         def update_E():
 
-            # fake = model.sample(noise,noise_logvar)
-            fake = model.sample(noise)
-            # real_mu, real_logvar, z_real, rec,flow_log_det_real,xi_real = model(real)
-            real_mu, real_logvar, z, rec = model(real)
-            # rec_mu, rec_logvar,z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec.detach())
-            # fake_mu, fake_logvar,z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake.detach())
+            fake = model.sample(noise,noise_logvar)
+            real_mu, real_logvar, z_real, rec,flow_log_det_real,xi_real = model(real)
+            rec_mu, rec_logvar,z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec.detach())
+            fake_mu, fake_logvar,z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake.detach())
             rec_mu, rec_logvar = model.encode(rec.detach())
             fake_mu, fake_logvar = model.encode(fake.detach())
             loss_rec =  model.reconstruction_loss(rec, real, True)
 
-            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()#-flow_log_det_real.mean()
-            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()#-flow_log_det_recon.mean()
-            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()#-flow_log_det_fake.mean()
+            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()-flow_log_det_real.mean()
+            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()-flow_log_det_recon.mean()
+            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()-flow_log_det_fake.mean()
             loss_margin = lossE_real_kl +(torch.relu(opt.m_plus-lossE_rec_kl)+torch.relu(opt.m_plus-lossE_fake_kl)) * 0.5 * opt.weight_neg
             #  + \
             if opt.lambda_me==0:
                 T = torch.zeros_like(loss_rec)
             else:
-                T = me_obj(z, c)*opt.lambda_me
+                z_real = model.flow_forward_only(xi_real.detach(), real_logvar.detach())
+                T = me_obj(z_real, c)*opt.lambda_me
             # Also, ok might want to add more parametrization of hyper parameters.
             #weight neg should control adversarial objective. Want fakes and (reconstructions?!) to deviate from prior, want reals to be close to prior.
             #Don't know why reconstructions should be adversarial... Might want to rebalance
             lossE = loss_rec  * opt.weight_rec + loss_margin * opt.weight_kl-T
             return lossE,rec,fake,loss_rec,lossE_real_kl,\
-                   lossE_rec_kl,lossE_fake_kl,real_logvar,rec_logvar,loss_margin,T
+                   lossE_rec_kl,lossE_fake_kl,real_logvar,rec_logvar,loss_margin,T,xi_real
 
         #=========== Update E ================
         if opt.fp_16:
             with autocast():
                 lossE,rec,fake,loss_rec,lossE_real_kl,\
                 lossE_rec_kl,lossE_fake_kl,\
-                real_logvar,rec_logvar,loss_margin,T_loss= update_E()
+                real_logvar,rec_logvar,loss_margin,T_loss,xi_real= update_E()
             optimizerG.zero_grad()
             optimizerE.zero_grad()
             scaler.scale(lossE).backward(retain_graph=True)
         else:
             lossE,rec,fake,loss_rec,lossE_real_kl,lossE_rec_kl,\
             lossE_fake_kl,real_logvar\
-                ,rec_logvar,loss_margin,T_loss = update_E()
+                ,rec_logvar,loss_margin,T_loss,xi_real = update_E()
             optimizerG.zero_grad()
             optimizerE.zero_grad()
             lossE.backward(retain_graph=True)
 
         # def flow_separate_backward():
-        #     # z_real = model.flow_forward_only(xi_real.detach(),real_logvar.detach())
-        #     # z_recon = model.flow_forward_only(xi_recon.detach(),rec_logvar.detach())
-        #     T_real = me_obj(xi_real,c)
-        #     # T_recon = me_obj(z_recon,c)
+        #     z_real = model.flow_forward_only(xi_real.detach(),real_logvar.detach())
+        #     T_real = me_obj(z_real,c)
         #     return T_real#+T_recon
         # if opt.fp_16:
         #     with autocast():
@@ -247,17 +218,15 @@ def main():
 
         for m in model.encoder.parameters():
             m.requires_grad=False
-        # for m in model.flow.parameters(): #Controls whether which objectives apply to flow
-        #     m.requires_grad=False
+        for m in model.flow.parameters(): #Controls whether which objectives apply to flow
+            m.requires_grad=False
 
         #========= Update G ==================
         def update_G():
-            # rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)
-            # fake_mu, fake_logvar, z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake)
-            rec_mu, rec_logvar = model.encode(rec)
-            fake_mu, fake_logvar = model.encode(fake)
-            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() #- flow_log_det_recon.mean()
-            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() #- flow_log_det_fake.mean()
+            rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)
+            fake_mu, fake_logvar, z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake)
+            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() - flow_log_det_recon.mean()
+            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() - flow_log_det_fake.mean()
             lossG = (lossG_rec_kl + lossG_fake_kl) * 0.5 * opt.weight_kl
             return lossG,lossG_rec_kl,lossG_fake_kl
 
@@ -277,8 +246,8 @@ def main():
             optimizerG.step()
         for m in model.encoder.parameters():
             m.requires_grad = True
-        # for m in model.flow.parameters(): #Controls whether which objectives apply to flow
-        #     m.requires_grad=True
+        for m in model.flow.parameters(): #Controls whether which objectives apply to flow
+            m.requires_grad=True
         #Write down setups, carefully consider gradient updates to avoid positive feedback loop!
 
         #. The key is to hold the regularization term LREG in Eq. (11) and Eq. (12) below the margin value m for most of the time
