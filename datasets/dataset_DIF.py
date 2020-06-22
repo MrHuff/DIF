@@ -1,4 +1,4 @@
-from datasets.dataset import ImageDatasetFromFile,load_image
+from datasets.dataset import ImageDatasetFromFile,load_image,Image
 from os.path import join
 import torch
 """
@@ -24,3 +24,19 @@ class ImageDatasetFromFile_DIF(ImageDatasetFromFile):
 
     def __len__(self):
         return len(self.image_filenames)
+
+class only_Rescale(object):
+    def __init__(self, output_size):
+        self.output_size = output_size
+
+    def __call__(self, image):
+        old_size = image.size[:2]
+        ratio = float(self.output_size)/max(old_size)
+        new_size = tuple([int(x*ratio) for x in old_size])
+        im = image.resize(new_size, Image.ANTIALIAS)
+        # create a new image and paste the resized on it
+
+        img = Image.new("RGB", (self.output_size, self.output_size))
+        img.paste(im, ((self.output_size - new_size[0]) // 2,
+                          (self.output_size - new_size[1]) // 2))
+        return img
