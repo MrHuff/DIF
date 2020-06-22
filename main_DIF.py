@@ -30,6 +30,7 @@ parser.add_argument("--kernel", default="rbf", type=str, help="kernel choice")
 parser.add_argument("--lambda_me", type=float, default=1.0, help="Default=0.25")
 parser.add_argument('--umap', action='store_true', help='visualizes umap')
 parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
+parser.add_argument("--prefix", default="", type=str, help="dataset")
 
 #TODO: figure out flow objective! Parallelize!
 #Choosing margin value is really hard...
@@ -49,7 +50,7 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
-    param_suffix = f"_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}"
+    param_suffix = f"_{opt.prefix}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}"
     opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)
