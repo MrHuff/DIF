@@ -296,9 +296,8 @@ def main():
     #----------------Train by epochs--------------------------
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):  
         #save models
-        save_epoch = (epoch//opt.save_iter)*opt.save_iter   
-        save_checkpoint(model, save_epoch, 0, '',folder_name=f"model{param_suffix}")
-        
+        if epoch%opt.save_iter==0:
+            save_checkpoint(model, epoch, cur_iter, '',folder_name=f"model{param_suffix}")
         model.train()
         for iteration, (batch,c) in enumerate(train_data_loader, 0):
             if c.sum()<=min_features and (~c).sum()<=min_features:
