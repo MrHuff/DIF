@@ -32,7 +32,9 @@ class linear_benchmark(nn.Module):
         self.register_buffer('w',torch.ones(d))
         self.objective = stableBCEwithlogits()
 
-    def forward(self,X,Y,debug_xi = None):
+    def forward(self,data,c,debug_xi = None):
+        X = data[~c, :]
+        Y = data[c, :]
         target = torch.cat([torch.zeros(X.shape[0]),torch.ones(Y.shape[0])]).to(X.device)
         data = torch.cat([X,Y])
         pred = (data@self.w).squeeze()
@@ -186,3 +188,4 @@ class MEstat(nn.Module):
         k_X = kX - x_bar
         cov_X = k_X.t() @ k_X
         return cov_X, x_bar, k_X, kX
+

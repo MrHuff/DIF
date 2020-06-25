@@ -31,6 +31,8 @@ parser.add_argument("--lambda_me", type=float, default=1.0, help="Default=0.25")
 parser.add_argument('--umap', action='store_true', help='visualizes umap')
 parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
 parser.add_argument("--prefix", default="", type=str, help="dataset")
+parser.add_argument('--linear_benchmark', action='store_true', help='linear bench')
+parser.add_argument('--cdim', type=int, default=3, help='cdim')
 
 #TODO: figure out flow objective! Parallelize!
 #Choosing margin value is really hard...
@@ -50,7 +52,7 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
-    param_suffix = f"_{opt.prefix}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}"
+    param_suffix = f"_{opt.prefix}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_linearb={opt.linear_benchmark}"
     opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)
@@ -76,7 +78,7 @@ def main():
     model = DIF_net(flow_C=opt.C,
                     flow_depth=opt.flow_depth,
                     tanh_flag=opt.tanh_flag,
-                    cdim=3,
+                    cdim=opt.cdim,
                     hdim=opt.hdim,
                     channels=str_to_list(opt.channels),
                     image_size=opt.output_height).cuda(base_gpu)
@@ -104,11 +106,16 @@ def main():
     
     train_set = ImageDatasetFromFile_DIF(property_indicator,train_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True)
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
-    me_obj = MEstat(J=opt.J,
-                    test_nx=len(train_set.property_indicator)-sum(train_set.property_indicator),
-                    test_ny=sum(train_set.property_indicator),
-                    asymp_n=opt.asymp_n,
-                    kernel_type=opt.kernel).cuda(base_gpu)
+
+    if opt.linear_benchmark:
+        me_obj = linear_benchmark(d=opt.hdim)
+    else:
+        me_obj = MEstat(J=opt.J,
+                        test_nx=len(train_set.property_indicator)-sum(train_set.property_indicator),
+                        test_ny=sum(train_set.property_indicator),
+                        asymp_n=opt.asymp_n,
+                        kernel_type=opt.kernel).cuda(base_gpu)
+
     min_features = 1./opt.J
     if opt.tensorboard:
         from tensorboardX import SummaryWriter

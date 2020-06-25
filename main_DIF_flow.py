@@ -51,7 +51,7 @@ def main():
     model = DIF_net_flow(flow_C=opt.C,
                     flow_depth=opt.flow_depth,
                     tanh_flag=opt.tanh_flag,
-                    cdim=3,
+                    cdim=opt.cdim,
                     hdim=opt.hdim,
                     channels=str_to_list(opt.channels),
                     image_size=opt.output_height).cuda(base_gpu)
@@ -77,11 +77,14 @@ def main():
     
     train_set = ImageDatasetFromFile_DIF(property_indicator,train_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True)
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
-    me_obj = MEstat(J=opt.J,
-                    test_nx=len(train_set.property_indicator)-sum(train_set.property_indicator),
-                    test_ny=sum(train_set.property_indicator),
-                    asymp_n=opt.asymp_n,
-                    kernel_type=opt.kernel).cuda(base_gpu)
+    if opt.linear_benchmark:
+        me_obj = linear_benchmark(d=opt.hdim)
+    else:
+        me_obj = MEstat(J=opt.J,
+                        test_nx=len(train_set.property_indicator) - sum(train_set.property_indicator),
+                        test_ny=sum(train_set.property_indicator),
+                        asymp_n=opt.asymp_n,
+                        kernel_type=opt.kernel).cuda(base_gpu)
     min_features = 1./opt.J
     if opt.tensorboard:
         from tensorboardX import SummaryWriter
