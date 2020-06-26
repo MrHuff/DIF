@@ -204,18 +204,6 @@ def main():
             optimizerE.zero_grad()
             lossE.backward(retain_graph=True)
 
-        # def flow_separate_backward():
-        #     z_real = model.flow_forward_only(xi_real.detach(),real_logvar.detach())
-        #     T_real = me_obj(z_real,c)
-        #     return T_real#+T_recon
-        # if opt.fp_16:
-        #     with autocast():
-        #         T_loss = -opt.lambda_me*flow_separate_backward()
-        #     scaler.scale(T_loss).backward()
-        # else:
-        #     T_loss = -opt.lambda_me*flow_separate_backward()
-        #     T_loss.backward()
-
         #Backprop everything on everything... NOT! Make sure the FLOW trains only one ONE of the saddlepoint objectives!
         # nn.utils.clip_grad_norm(model.encoder.parameters(), 1.0)
 
@@ -272,30 +260,6 @@ def main():
                     record_image(writer, [real, rec, fake], cur_iter)   
             else:
                 vutils.save_image(torch.cat([real, rec, fake], dim=0).data.cpu(), '{}/image_{}.jpg'.format(opt.outf, cur_iter),nrow=opt.nrow)
-                # with torch.no_grad():
-                #     list_xi = []
-                #     list_z = []
-                #     list_c = []
-                #     for iteration,(batch,c) in enumerate(train_data_loader,0):
-                #
-                #         if iteration<20:
-                #             c = c.cuda(base_gpu)
-                #             batch = batch.cuda(base_gpu)
-                #             list_c.append(c)
-                #             real_mu, real_logvar, z_real, rec = model(batch)
-                #             # real_mu, real_logvar, z_real, rec, flow_log_det_real, xi_real = model(batch)
-                #             list_z.append(z_real)
-                #             list_xi.append(real_mu)
-                #         else:
-                #             break
-                #     big_c = torch.cat(list_c,dim=0)
-                #     big_xi = torch.cat(list_xi,dim=0)
-                #     big_z = torch.cat(list_z,dim=0)
-                #     x_class_xi, y_class_xi = subset_latents(big_xi,big_c)
-                #     make_binary_class_umap_plot(x_class_xi,y_class_xi,opt.outf,cur_iter,'xi_plot')
-                #     x_class_z, y_class_z = subset_latents(big_z,big_c)
-                #     make_binary_class_umap_plot(x_class_z,y_class_z,opt.outf,cur_iter,'z_plot')
-
     #----------------Train by epochs--------------------------
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):  
         #save models
