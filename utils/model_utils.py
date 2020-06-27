@@ -3,6 +3,8 @@ from datasets.dataset_DIF import *
 import pandas as pd
 from main import load_model
 from torchvision.utils import save_image
+import tqdm
+from torch.cuda.amp import autocast,GradScaler
 
 def dataloader_train_test(opt):
     data = pd.read_csv(opt.class_indicator_file)
@@ -19,12 +21,12 @@ def dataloader_train_test(opt):
     train_set = ImageDatasetFromFile_DIF(train_property_indicator, train_list, opt.dataroot, input_height=None,
                                          crop_height=None, output_height=opt.output_height, is_mirror=False)
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True,
-                                                    num_workers=1)
+                                                    num_workers=opt.workers)
 
     test_set = ImageDatasetFromFile_DIF(test_property_indicator, test_list, opt.dataroot, input_height=None,
                                          crop_height=None, output_height=opt.output_height, is_mirror=False)
     test_data_loader = torch.utils.data.DataLoader(test_set, batch_size=opt.batchSize, shuffle=True,
-                                                    num_workers=1)
+                                                    num_workers=opt.workers)
 
     return train_data_loader,test_data_loader
 
@@ -34,7 +36,7 @@ def get_fake_images(model,device,n):
 
 def get_latents(model,real_images):
     with torch.no_grad():
-        return model.get_latents(real_images)
+        return model.get_latent(real_images)
 
 def generate_image(model,z):
     with torch.no_grad():
@@ -44,8 +46,16 @@ def save_generated_images(image_tensor,path):
     save_image(image_tensor,path+'.jpg')
 
 def generate_all_latents(dataloader,model):
-
-
+    _latents = []
+    _class = []
+    for iteration, (batch, c) in enumerate(tqdm.tqdm(dataloader)):
+        with autocast():
+            z = get_latents(model,batch.cuda())
+        _latents.append(z.float())
+        _class.append(c)
+    _latents = torch.cat(_latents,dim=0)
+    _class = torch.cat(_class,dim=0)
+    return _latents,_class
 
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""

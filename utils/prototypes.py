@@ -2,7 +2,7 @@ from utils.model_utils import *
 from gpytorch.kernels import RBFKernel,Kernel
 import torch
 import scipy.stats as stats
-
+import numpy as np
 class witness_generation(torch.nn.Module):
     def __init__(self,hdim,n_witnesses,latents,c,coeff=1e-2,init_type='randn'):
         super(witness_generation, self).__init__()
@@ -11,8 +11,10 @@ class witness_generation(torch.nn.Module):
         if init_type=='randn':
             init_vals = torch.randn(n_witnesses,hdim)
         self.T = torch.nn.Parameter(init_vals,requires_grad=True)
-        self.register_buffer('X_data',latents[~c,:])
-        self.register_buffer('Y_data',latents[c,:])
+        self.register_buffer('X',latents[~c,:])
+        self.register_buffer('Y',latents[c,:])
+        self.nx = self.X.shape[0]
+        self.ny = self.Y.shape[0]
         self.ls = self.get_median_ls(latents)
         self.kernel = RBFKernel()
         self.kernel.raw_lengthscale = torch.nn.Parameter(self.ls, requires_grad=True)
@@ -42,13 +44,23 @@ class witness_generation(torch.nn.Module):
         cov_X = torch.mm(k_X.t(),k_X)
         return cov_X,x_bar
 
-    def forward(self):
-        cov_X,x_bar = self.calculate_hotelling(self.X)
-        cov_Y,y_bar = self.calculate_hotelling(self.Y)
-        pooled = 1/(self.nx+self.ny-2) * (cov_X+ cov_Y)
+    def forward(self,X=None,Y=None):
+        if X is None:
+            X = self.X
+            nx = self.nx
+        else:
+            nx = X.shape[0]
+        if Y is None:
+            Y = self.Y
+            ny = self.ny
+        else:
+            ny = Y.shape[0]
+        cov_X,x_bar = self.calculate_hotelling(X)
+        cov_Y,y_bar = self.calculate_hotelling(Y)
+        pooled = 1/(nx+ny-2) * (cov_X+ cov_Y)
         z = (x_bar-y_bar).unsqueeze(1)
         inv_z,_ = torch.solve(z,pooled + self.diag)
-        test_statistic = -self.nx*self.ny/(self.nx + self.ny) *torch.sum(z*inv_z)
+        test_statistic = -nx*ny/(nx + ny) *torch.sum(z*inv_z)
         return test_statistic
 
     def get_pval_test(self,stat):
@@ -60,17 +72,27 @@ class witness_generation(torch.nn.Module):
 
 def training_loop_witnesses(hdim,
                             n_witnesses,
-                            latents,
-                            c,
+                            train_latents,
+                            c_train,
+                            test_latents,
+                            c_test,
                             coeff=1e-2,
                             init_type='randn',
                             cycles=40,
-                            its = 50,
-                            device="cpu"):
+                            its = 50):
+    train_idx = np.random.randn(train_latents.shape[0]) <= 0.9
+    X_train = train_latents[train_idx, :]
+    Y_train = c_train[train_idx]
+    X_val = train_latents[~train_idx, :]
+    Y_val = c_train[~train_idx]
 
-    witness_obj = witness_generation(hdim,n_witnesses,latents,c,coeff=coeff,init_type=init_type).to(device)
-    optimizer = torch.optim.Adam(witness_obj.parameters(), lr=1e-3)
-    lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=50, factor=0.5)
+    val_X = X_val[~Y_val]
+    val_Y = X_val[Y_val]
+    test_X = test_latents[~c_test,:]
+    test_Y = test_latents[c_test,:]
+    witness_obj = witness_generation(hdim, n_witnesses, X_train, Y_train, coeff=coeff, init_type=init_type).cuda()
+    optimizer = torch.optim.Adam(witness_obj.parameters(), lr=1e-1)
+    lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=cycles//10, factor=0.5)
     for i in range(cycles):
         for t in [True,False]:
             if t:
@@ -82,33 +104,14 @@ def training_loop_witnesses(hdim,
                 optimizer.zero_grad()
                 tst_statistic.backward()
                 optimizer.step()
-                lrs.step(tst_statistic)
-            print(f'test statistic: {tst_statistic.item()}')
-    pval = witness_obj.get_pval_test(tst_statistic.item())
+            with torch.no_grad():
+                val_stat_test = witness_obj(val_X, val_Y)
+            print(f'test statistic: {val_stat_test.item()}')
+            lrs.step(val_stat_test.item())
+    with torch.no_grad():
+        tst_stat_test = witness_obj(test_X,test_Y)
+    pval = witness_obj.get_pval_test(tst_stat_test.item())
     return witness_obj,pval
-# with torch.no_grad():
-#     list_xi = []
-#     list_z = []
-#     list_c = []
-#     for iteration,(batch,c) in enumerate(train_data_loader,0):
-#
-#         if iteration<20:
-#             c = c.cuda(base_gpu)
-#             batch = batch.cuda(base_gpu)
-#             list_c.append(c)
-#             real_mu, real_logvar, z_real, rec = model(batch)
-#             # real_mu, real_logvar, z_real, rec, flow_log_det_real, xi_real = model(batch)
-#             list_z.append(z_real)
-#             list_xi.append(real_mu)
-#         else:
-#             break
-#     big_c = torch.cat(list_c,dim=0)
-#     big_xi = torch.cat(list_xi,dim=0)
-#     big_z = torch.cat(list_z,dim=0)
-#     x_class_xi, y_class_xi = subset_latents(big_xi,big_c)
-#     make_binary_class_umap_plot(x_class_xi,y_class_xi,opt.outf,cur_iter,'xi_plot')
-#     x_class_z, y_class_z = subset_latents(big_z,big_c)
-#     make_binary_class_umap_plot(x_class_z,y_class_z,opt.outf,cur_iter,'z_plot')
 
 #calculate FID for prototypes
 

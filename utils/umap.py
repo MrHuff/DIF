@@ -6,8 +6,9 @@ def reject_outliers(data, m=2):
     norm = np.linalg.norm(data,axis=1)
     return data[abs(norm - np.mean(norm)) < m * np.std(norm),:]
 
-def make_binary_class_umap_plot(dataA_np,dataB_np,save_path,cur_it,description):
-    all_h = np.concatenate([dataA_np,dataB_np],axis=0)
+def make_binary_class_umap_plot(all_h,c,save_path,cur_it,description):
+    dataA_np = all_h[~c,:]
+    dataB_np = all_h[c,:]
     reducer_h = umap.UMAP()
     reducer_h.fit(all_h)
 

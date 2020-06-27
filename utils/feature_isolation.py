@@ -1,10 +1,10 @@
 import torch
 from sklearn import metrics
 from torch.utils.data import Dataset,DataLoader
-
+import numpy as np
 def auc_check(model,X,Y):
     with torch.no_grad():
-        y_pred,_ = model(X)
+        y_pred= model(X)
         y_pred = (y_pred.squeeze().float() > 0.5).cpu().float().numpy()
         fpr, tpr, thresholds = metrics.roc_curve(Y.cpu().numpy(), y_pred, pos_label=1)
         auc =  metrics.auc(fpr, tpr)
@@ -32,32 +32,39 @@ class lasso_regression(torch.nn.Module):
     def forward(self,x):
         return self.linear(x)
 
-def lasso_train(data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,device):
-    X_train = data_train
-    Y_train = c_train
+def lasso_train(data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,bs_rate=1.0):
+    train_idx = np.random.randn(data_train.shape[0])<=0.9
+    X_train = data_train[train_idx,:]
+    Y_train = c_train[train_idx]
+    X_val = data_train[~train_idx,:]
+    Y_val = c_train[~train_idx]
     X_test = data_test
     Y_test = c_test
-
-    pos_weight = (Y_train.numel()-Y_train.sum())/Y_train.sum()
-    model = lasso_regression(in_dim=X_train.shape[1], o_dim=1).to(device)
+    bs = round(bs_rate*X_train.shape[0])
+    pos_weight = (Y_train.shape[0]-Y_train.sum().float())/Y_train.sum().float()
+    pos_weight = pos_weight.cuda()
+    model = lasso_regression(in_dim=X_train.shape[1], o_dim=1).cuda()
     opt = torch.optim.Adam(params=model.parameters(),lr=lr)
     dataset = regression_dataset(X_train,Y_train)
     objective = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    loader  = DataLoader(dataset,batch_size = 100000)
+    loader  = DataLoader(dataset,batch_size = bs)
+    lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(opt,factor=0.5,patience=epochs//10)
+
+
     for i in range(epochs):
         for j,(X_batch,y_batch) in enumerate(loader):
+            y_batch = y_batch.cuda()
             opt.zero_grad()
-            y_pred = model(X_batch.to(device))
-            e = objective(y_pred.squeeze(),y_batch.float().to(device).squeeze()) + reg_parameter*model.lasso_term() #lasso term screwing things up
+            y_pred = model(X_batch)
+            e = objective(y_pred.squeeze(),y_batch.float().squeeze()) + reg_parameter*model.lasso_term() #lasso term screwing things up
             e.backward()
             opt.step()
-        if i % 1 == 0:
-            with torch.no_grad():
-                train_auc = auc_check(model, X_train.to(device), Y_train.to(device))
-                test_auc = auc_check(model, X_test.to(device), Y_test.to(device))
-                print(train_auc)
-                print(test_auc)
-
-    return model
+        with torch.no_grad():
+            val_auc = auc_check(model, X_val, Y_val)
+            test_auc = auc_check(model, X_test, Y_test)
+            print(f'val auc: {val_auc}')
+            print(f'test auc: {test_auc}')
+            lrs.step(-val_auc)
+    return model,test_auc
 
 

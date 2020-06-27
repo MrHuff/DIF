@@ -33,7 +33,7 @@ from scipy import linalg
 from torch.nn.functional import adaptive_avg_pool2d
 import numpy as np
 from PIL import Image
-
+import torchvision
 try:
     from tqdm import tqdm
 except ImportError:
@@ -60,7 +60,11 @@ def imread(filename):
     """
     Loads an image file into a (height, width, 3) uint8 ndarray.
     """
-    return np.asarray(Image.open(filename), dtype=np.uint8)[..., :3]
+    img = Image.open(filename)
+    if img.mode is not 'RGB':
+        img = img.convert('RGB')
+    img = torchvision.transforms.ToTensor()(img)
+    return img
 
 
 def get_activations(files, model, batch_size=50, dims=2048,
@@ -97,14 +101,14 @@ def get_activations(files, model, batch_size=50, dims=2048,
         start = i
         end = i + batch_size
 
-        images = np.array([imread(str(f)).astype(np.float32)
-                           for f in files[start:end]])
+        batch = torch.stack([imread(str(f)).astype(np.float32)
+                           for f in files[start:end]],dim=0)
 
         # Reshape to (n_images, 3, height, width)
-        images = images.transpose((0, 3, 1, 2))
-        images /= 255
-
-        batch = torch.from_numpy(images).type(torch.FloatTensor)
+        # images = images.transpose((0, 3, 1, 2))
+        # images /= 255
+        #
+        # batch = torch.from_numpy(images).type(torch.FloatTensor)
         if cuda:
             batch = batch.cuda()
 
@@ -237,10 +241,6 @@ def calculate_fid_given_paths(paths, batch_size, cuda, dims):
     return fid_value
 
 def calculate_dataset_FID(path,batch_size,cuda,dims): #Calculate FID for entire train and test dataset and use as reference.
-    for p in path:
-        if not os.path.exists(p):
-            raise RuntimeError('Invalid path: %s' % p)
-
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
 
     model = InceptionV3([block_idx])

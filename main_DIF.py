@@ -11,13 +11,11 @@ import torchvision.utils as vutils
 from models.networks import *
 from models.DIF_net import *
 from models.ME_objectives import *
-import torch.nn.functional as F
 from torch.cuda.amp import autocast,GradScaler
 import pandas as pd
 import GPUtil
-from utils.umap import make_binary_class_umap_plot
 from main import parser,record_image,record_scalar,str_to_list,load_model,save_checkpoint
-from itertools import chain
+
 
 parser.add_argument('--class_indicator_file', default="/home/file.csv", type=str, help='class indicator csv file')
 parser.add_argument('--fp_16', action='store_true', help='enables fp_16')
@@ -104,7 +102,7 @@ def main():
 
     assert len(train_list) > 0
     
-    train_set = ImageDatasetFromFile_DIF(property_indicator,train_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True)
+    train_set = ImageDatasetFromFile_DIF(property_indicator,train_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True,is_gray=opt.cdim!=3)
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
 
     if opt.linear_benchmark:
