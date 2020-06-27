@@ -5,6 +5,7 @@ from main import load_model
 from torchvision.utils import save_image
 import tqdm
 from torch.cuda.amp import autocast,GradScaler
+import os
 
 def dataloader_train_test(opt):
     data = pd.read_csv(opt.class_indicator_file)
@@ -19,20 +20,27 @@ def dataloader_train_test(opt):
     assert len(train_list) > 0
 
     train_set = ImageDatasetFromFile_DIF(train_property_indicator, train_list, opt.dataroot, input_height=None,
-                                         crop_height=None, output_height=opt.output_height, is_mirror=False)
+                                         crop_height=None, output_height=opt.output_height, is_mirror=False,is_gray=opt.cdim!=3)
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True,
                                                     num_workers=opt.workers)
 
     test_set = ImageDatasetFromFile_DIF(test_property_indicator, test_list, opt.dataroot, input_height=None,
-                                         crop_height=None, output_height=opt.output_height, is_mirror=False)
+                                         crop_height=None, output_height=opt.output_height, is_mirror=False,is_gray=opt.cdim!=3)
     test_data_loader = torch.utils.data.DataLoader(test_set, batch_size=opt.batchSize, shuffle=True,
                                                     num_workers=opt.workers)
 
     return train_data_loader,test_data_loader
 
-def get_fake_images(model,device,n):
+def get_fake_images(model,n):
     with torch.no_grad():
-        return model.sample_fake_eval(n,device)
+        return model.sample_fake_eval(n)
+
+def save_images_individually(images, dir, folder, file_name):
+    if not os.path.exists(dir+folder):
+        os.makedirs(dir+folder)
+    n = images.shape[0]
+    for i in range(n):
+        save_image(images[i, :, :, :], dir + folder + f'/{file_name}_{i}.jpg')
 
 def get_latents(model,real_images):
     with torch.no_grad():
@@ -41,9 +49,6 @@ def get_latents(model,real_images):
 def generate_image(model,z):
     with torch.no_grad():
         return model.decode(z)
-
-def save_generated_images(image_tensor,path):
-    save_image(image_tensor,path+'.jpg')
 
 def generate_all_latents(dataloader,model):
     _latents = []

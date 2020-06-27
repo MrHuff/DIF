@@ -92,7 +92,7 @@ def training_loop_witnesses(hdim,
     test_Y = test_latents[c_test,:]
     witness_obj = witness_generation(hdim, n_witnesses, X_train, Y_train, coeff=coeff, init_type=init_type).cuda()
     optimizer = torch.optim.Adam(witness_obj.parameters(), lr=1e-1)
-    lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=cycles//10, factor=0.5)
+    lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, factor=0.5)
     for i in range(cycles):
         for t in [True,False]:
             if t:
@@ -113,5 +113,4 @@ def training_loop_witnesses(hdim,
     pval = witness_obj.get_pval_test(tst_stat_test.item())
     return witness_obj,pval
 
-#calculate FID for prototypes
 

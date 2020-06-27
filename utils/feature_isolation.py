@@ -48,7 +48,7 @@ def lasso_train(data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,bs_r
     dataset = regression_dataset(X_train,Y_train)
     objective = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     loader  = DataLoader(dataset,batch_size = bs)
-    lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(opt,factor=0.5,patience=epochs//10)
+    lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(opt,factor=0.5,patience=2)
 
 
     for i in range(epochs):

@@ -38,8 +38,8 @@ class DIF_net(IntroVAE):
         else:
             return self.decode(z)
 
-    def sample_fake_eval(self,n,device):
-        z = torch.randn(n,self.hdim).cuda(device)
+    def sample_fake_eval(self,n):
+        z = torch.randn(n,self.hdim).cuda()
         return self.sample(z)
 
     def get_latent(self,x):
@@ -90,8 +90,8 @@ class DIF_net_flow(IntroVAE):
             z,_ = self.flow(xi,logvar)
         return self.decode(z.detach())
 
-    def sample_fake_eval(self, n, device):
-        z = torch.randn(n, self.hdim).cuda(device)
+    def sample_fake_eval(self, n):
+        z = torch.randn(n, self.hdim).cuda()
         logvar = torch.zeros_like(z)
         return self.sample(z,logvar)
 

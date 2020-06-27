@@ -101,8 +101,7 @@ def get_activations(files, model, batch_size=50, dims=2048,
         start = i
         end = i + batch_size
 
-        batch = torch.stack([imread(str(f)).astype(np.float32)
-                           for f in files[start:end]],dim=0)
+        batch = torch.stack([imread(str(f)) for f in files[start:end]],dim=0)
 
         # Reshape to (n_images, 3, height, width)
         # images = images.transpose((0, 3, 1, 2))

@@ -7,11 +7,9 @@ from models.DIF_net import *
 import GPUtil
 import torch.backends.cudnn as cudnn
 import pandas as pd
-
 opt = dotdict
-opt.class_indicator_file = "/homes/rhu/data/celebA_hq_gender.csv"
 opt.trainsize = 29000
-opt.dataroot = "/homes/rhu/data/data256x256"
+opt.dataset_index = 2 #0 = mnist, 1 = fashion, 2 = celeb
 opt.output_height = 256
 opt.batchSize = 32
 opt.J = 0.25
@@ -27,14 +25,24 @@ opt.hdim = 512
 opt.n_witness = 16
 opt.cur_it = 145083
 opt.umap=False
-opt.feature_isolation = False
-opt.witness = False
+opt.feature_isolation = True
+opt.witness = True
 opt.FID= True
 opt.workers = 4
 opt.flow_depth = 4
 opt.cdim = 3
-if __name__ == '__main__':
+dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/"]
+class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv"]
+opt.FID_fake = True
+opt.FID_prototypes = True
 
+if __name__ == '__main__':
+    opt.dataroot = dataroots_list[opt.dataset_index]
+    opt.class_indicator_file = class_indicator_files_list[opt.dataset_index]
+    print(opt.dataroot)
+    print(opt.class_indicator_file)
+    cols = []
+    val = []
     if opt.cuda:
         base_gpu_list = GPUtil.getAvailable(order='memory', limit=2)
         if 5 in base_gpu_list:
@@ -69,19 +77,69 @@ if __name__ == '__main__':
     if opt.umap:
         make_binary_class_umap_plot(train_z.cpu().numpy(),train_c.cpu().numpy(),opt.save_path,opt.cur_it,'umap_train')
         make_binary_class_umap_plot(test_z.cpu().numpy(),test_c.cpu().numpy(),opt.save_path,opt.cur_it,'umap_test')
+
     if opt.feature_isolation:
+        #add load clause
         lasso_model,test_auc = lasso_train(train_z,train_c,test_z,test_c,0.1,1e-2,100,bs_rate=1e-2)
+        cols.append('test_auc')
+        val.append(test_auc)
+        torch.save(lasso_model.state_dict(),opt.save_path+'lasso_latents.pth')
     if opt.witness:
+        #add load clause
         witness_obj, pval = training_loop_witnesses(opt.hdim, opt.n_witness, train_z, train_c, test_z, test_c)
+        torch.save(witness_obj.state_dict(),opt.save_path+'witness_object.pth')
+        witnesses_tensor = generate_image(model,witness_obj.T)
+        cols.append('test_pval')
+        val.append(pval)
+        try:
+            lasso_model = lasso_regression(in_dim=opt.hdim, o_dim=1).cuda()
+            lasso_model.load_state_dict(torch.load(opt.save_path+'lasso_latents.pth'))
+            lasso_model.eval()
+            preds = lasso_model(witness_obj.T)
+            mask = preds>=0.5
+            save_images_individually(witnesses_tensor[~mask.squeeze(),:,:,:], opt.save_path, 'prototypes_A', 'prototype_A')
+            save_images_individually(witnesses_tensor[mask.squeeze(),:,:,:], opt.save_path, 'prototypes_B', 'prototype_B')
+            save_images_individually(witnesses_tensor, opt.save_path, 'prototypes', 'prototype')
+
+        except Exception as e:
+            print(e)
+            print("No classification model found, saving without classifying")
+            save_images_individually(witnesses_tensor, opt.save_path, 'prototypes', 'prototype')
+
     if opt.FID:
+        fake_tensor = get_fake_images(model,32)
+        save_images_individually(fake_tensor, opt.save_path, 'fake_images', 'fake')
         datasets = ['mnist38','fashion','celebHQ']
-        d_paths = ["/homes/rhu/data/mnist_3_8_64x64","/homes/rhu/data/fashion_256x256","/homes/rhu/data/data256x256"]
         for i,d in enumerate(datasets):
             if not os.path.isfile(f'./precomputed_fid/{d}/data.npy'):
                 if not os.path.exists(f'./precomputed_fid/{d}/'):
                     os.makedirs(f'./precomputed_fid/{d}/')
-                m1,s1= calculate_dataset_FID(d_paths[i],32,True,2048)
+                m1,s1= calculate_dataset_FID(dataroots_list[i],32,True,2048)
                 save_FID(m1,s1,f'./precomputed_fid/{d}')
+        d = datasets[opt.dataset_index]
+        m1,s1 = load_FID(f'./precomputed_fid/{d}')
+
+        if opt.FID_fake:
+            m_fake,s_fake = calculate_dataset_FID(opt.save_path+'fake_images/',32,True,2048)
+            fid_fake = calculate_frechet_distance(m1,s1,m_fake,s_fake)
+            cols.append('fake_FID')
+            val.append(fid_fake)
+
+        if opt.FID_prototypes:
+            m_prototypes,s_prototypes = calculate_dataset_FID(opt.save_path+'prototypes/',32,True,2048)
+            fid_prototypes = calculate_frechet_distance(m1, s1, m_prototypes, s_prototypes)
+            cols.append('prototype_FID')
+            val.append(fid_prototypes)
+
+    df = pd.DataFrame([val],columns=cols)
+    df.to_csv(opt.save_path+'results.csv')
+
+
+
+
+
+
+
 
 
 
