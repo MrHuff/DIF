@@ -67,4 +67,3 @@ def lasso_train(data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,bs_r
             lrs.step(-val_auc)
     return model,test_auc
 
-

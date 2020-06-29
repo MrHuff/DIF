@@ -4,18 +4,18 @@ import torch
 import scipy.stats as stats
 import numpy as np
 class witness_generation(torch.nn.Module):
-    def __init__(self,hdim,n_witnesses,latents,c,coeff=1e-2,init_type='randn'):
+    def __init__(self,hdim,n_witnesses,X,Y,coeff=1e-2,init_type='randn'):
         super(witness_generation, self).__init__()
         self.hdim = hdim
         self.n_witnesses= n_witnesses
         if init_type=='randn':
             init_vals = torch.randn(n_witnesses,hdim)
         self.T = torch.nn.Parameter(init_vals,requires_grad=True)
-        self.register_buffer('X',latents[~c,:])
-        self.register_buffer('Y',latents[c,:])
+        self.register_buffer('X',X)
+        self.register_buffer('Y',Y)
         self.nx = self.X.shape[0]
         self.ny = self.Y.shape[0]
-        self.ls = self.get_median_ls(latents)
+        self.ls = self.get_median_ls(torch.cat([self.X,self.Y]))
         self.kernel = RBFKernel()
         self.kernel.raw_lengthscale = torch.nn.Parameter(self.ls, requires_grad=True)
         self.diag = torch.nn.Parameter(coeff*torch.eye(n_witnesses),requires_grad=False).float() #Tweak this badboy for FP_16
@@ -80,17 +80,16 @@ def training_loop_witnesses(hdim,
                             init_type='randn',
                             cycles=40,
                             its = 50):
-    train_idx = np.random.randn(train_latents.shape[0]) <= 0.9
-    X_train = train_latents[train_idx, :]
-    Y_train = c_train[train_idx]
-    X_val = train_latents[~train_idx, :]
-    Y_val = c_train[~train_idx]
+    X = train_latents[~c_train,:]
+    Y = train_latents[c_train,:]
+    tr_nx = round(X.shape[0]*0.9)
+    tr_ny = round(Y.shape[0]*0.9)
 
-    val_X = X_val[~Y_val]
-    val_Y = X_val[Y_val]
+    val_X = X[tr_nx:,:]
+    val_Y = Y[tr_ny:,:]
     test_X = test_latents[~c_test,:]
     test_Y = test_latents[c_test,:]
-    witness_obj = witness_generation(hdim, n_witnesses, X_train, Y_train, coeff=coeff, init_type=init_type).cuda()
+    witness_obj = witness_generation(hdim, n_witnesses, X[:tr_nx,:], Y[:tr_ny,:], coeff=coeff, init_type=init_type).cuda()
     optimizer = torch.optim.Adam(witness_obj.parameters(), lr=1e-1)
     lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, factor=0.5)
     for i in range(cycles):

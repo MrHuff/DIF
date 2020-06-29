@@ -77,17 +77,40 @@ if __name__ == '__main__':
     if opt.umap:
         make_binary_class_umap_plot(train_z.cpu().numpy(),train_c.cpu().numpy(),opt.save_path,opt.cur_it,'umap_train')
         make_binary_class_umap_plot(test_z.cpu().numpy(),test_c.cpu().numpy(),opt.save_path,opt.cur_it,'umap_test')
-
     if opt.feature_isolation:
-        #add load clause
-        lasso_model,test_auc = lasso_train(train_z,train_c,test_z,test_c,0.1,1e-2,100,bs_rate=1e-2)
+        try:
+            lasso_model = lasso_regression(in_dim=opt.hdim, o_dim=1).cuda()
+            lasso_model.load_state_dict(torch.load(opt.save_path+'lasso_latents.pth'))
+            lasso_model.eval()
+            test_auc = auc_check(lasso_model,test_z,test_c)
+        except Exception as e:
+            print(e)
+            print("No latent regression model exists, training a new one!")
+            lasso_model,test_auc = lasso_train(train_z,train_c,test_z,test_c,0.1,1e-2,100,bs_rate=1e-2)
+            torch.save(lasso_model.state_dict(), opt.save_path + 'lasso_latents.pth')
+
         cols.append('test_auc')
         val.append(test_auc)
-        torch.save(lasso_model.state_dict(),opt.save_path+'lasso_latents.pth')
+        feature_isolation(opt.C,test_z,test_c,lasso_model,model,opt.save_path)
+        traverse(test_z,test_c,model,opt.save_path)
     if opt.witness:
         #add load clause
-        witness_obj, pval = training_loop_witnesses(opt.hdim, opt.n_witness, train_z, train_c, test_z, test_c)
-        torch.save(witness_obj.state_dict(),opt.save_path+'witness_object.pth')
+        try:
+            X = train_z[~train_c, :]
+            Y = train_z[train_c, :]
+            tr_nx = round(X.shape[0] * 0.9)
+            tr_ny = round(Y.shape[0] * 0.9)
+            witness_obj = witness_generation(opt.hdim, opt.n_witness,X[:tr_nx,:], Y[:tr_ny,:]).cuda()
+            witness_obj.load_state_dict(torch.load(opt.save_path+'witness_object.pth'),False)
+            witness_obj.eval()
+            tst_stat_test = witness_obj(test_z[~test_c,:], test_z[test_c,:])
+            pval = witness_obj.get_pval_test(tst_stat_test.item())
+        except Exception as e:
+            print(e)
+            print("No witness model exists, training a new one!")
+            witness_obj, pval = training_loop_witnesses(opt.hdim, opt.n_witness, train_z, train_c, test_z, test_c)
+            torch.save(witness_obj.state_dict(),opt.save_path+'witness_object.pth')
+
         witnesses_tensor = generate_image(model,witness_obj.T)
         cols.append('test_pval')
         val.append(pval)
