@@ -38,11 +38,12 @@ parser.add_argument('--cdim', type=int, default=3, help='cdim')
 # Figure out reasonable architecture.
 # Different parametrization strategies.. either neutralize flow or let it become part of each component
 # Try not having a flow, seems to be complicating training...
+#Compare loglikelihood to ELBO, loglikelihood comparison (quality of the inference models) loglikelihood approx elbo = GOOD else BAD. FID.
+# Decision bounday is, if inference i.e. loglikelihood is close to ELBO then no CIF needed, possibly CIF needed.
 def subset_latents(data,c):
     y_class = data[c,:]
     x_class = data[~c,:]
     return x_class.cpu().numpy(),y_class.cpu().numpy()
-
 
 def main():
     print(torch.__version__)
@@ -50,7 +51,7 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
-    param_suffix = f"_{opt.prefix}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_linearb={opt.linear_benchmark}"
+    param_suffix = f"{opt.prefix}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_linearb={opt.linear_benchmark}"
     opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)
@@ -73,15 +74,13 @@ def main():
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
     #--------------build models -------------------------
-    model = DIF_net(flow_C=opt.C,
+    model = DIF_netv2(flow_C=opt.C,
                     flow_depth=opt.flow_depth,
                     tanh_flag=opt.tanh_flag,
                     cdim=opt.cdim,
                     hdim=opt.hdim,
                     channels=str_to_list(opt.channels),
                     image_size=opt.output_height).cuda(base_gpu)
-
-    # model = IntroVAE(cdim=3, hdim=opt.hdim, channels=str_to_list(opt.channels), image_size=opt.output_height).cuda()
 
     if opt.pretrained:
         load_model(model, opt.pretrained)

@@ -3,9 +3,9 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 
-#TODO spectral norm, attention for gans, and conditional batch norm
+#TODO spectral norm, attention for gans, and conditional batch norm (wont work, we can't give effect data)
 #Also uppgrade the flow maybe...
-class _Residual_Block(nn.Module): 
+class _Residual_Block(nn.Module):
     def __init__(self, inc=64, outc=64, groups=1, scale=1.0):
         super(_Residual_Block, self).__init__()
         

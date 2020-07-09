@@ -8,8 +8,7 @@ import GPUtil
 import torch.backends.cudnn as cudnn
 import pandas as pd
 opt = dotdict
-opt.trainsize = 29000
-opt.dataset_index = 2 #0 = mnist, 1 = fashion, 2 = celeb
+opt.dataset_index = 1 #0 = mnist, 1 = fashion, 2 = celeb
 opt.output_height = 256
 opt.batchSize = 32
 opt.J = 0.25
@@ -18,9 +17,9 @@ opt.tanh_flag = True
 opt.channels = [32, 64, 128, 256, 512, 512]
 opt.use_flow_model = False
 opt.cuda = True
-opt.trainsize = 29000
-opt.save_path = 'model_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=False_C=100.0/'
-opt.load_path = opt.save_path+'model_epoch_160_iter_145078.pth'
+
+opt.save_path = 'model_fashion_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0/'#'model_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=False_C=100.0/'
+opt.load_path = opt.save_path+'model_epoch_180_iter_123840.pth' #'model_epoch_160_iter_145078.pth'
 opt.hdim = 512
 opt.n_witness = 16
 opt.cur_it = 145083
@@ -33,12 +32,14 @@ opt.flow_depth = 4
 opt.cdim = 3
 dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/"]
 class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv"]
+train_sizes = [13000,22000,29000]
 opt.FID_fake = True
 opt.FID_prototypes = True
 
 if __name__ == '__main__':
     opt.dataroot = dataroots_list[opt.dataset_index]
     opt.class_indicator_file = class_indicator_files_list[opt.dataset_index]
+    opt.trainsize=train_sizes[opt.dataset_index]
     print(opt.dataroot)
     print(opt.class_indicator_file)
     cols = []
