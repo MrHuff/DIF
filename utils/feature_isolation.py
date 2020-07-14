@@ -2,13 +2,14 @@ import torch
 from sklearn import metrics
 from torch.utils.data import Dataset,DataLoader
 import numpy as np
-def auc_check(model,X,Y):
+
+def auc_check(y_pred,Y):
     with torch.no_grad():
-        y_pred= model(X)
         y_pred = (y_pred.squeeze().float() > 0.5).cpu().float().numpy()
         fpr, tpr, thresholds = metrics.roc_curve(Y.cpu().numpy(), y_pred, pos_label=1)
         auc =  metrics.auc(fpr, tpr)
         return auc
+
 
 class regression_dataset(Dataset):
     def __init__(self, X,Y):
@@ -60,8 +61,10 @@ def lasso_train(data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,bs_r
             e.backward()
             opt.step()
         with torch.no_grad():
-            val_auc = auc_check(model, X_val, Y_val)
-            test_auc = auc_check(model, X_test, Y_test)
+            val_pred = model(X_val)
+            val_auc = auc_check(val_pred, Y_val)
+            test_pred = model(X_test)
+            test_auc = auc_check(test_pred, Y_test)
             print(f'val auc: {val_auc}')
             print(f'test auc: {test_auc}')
             lrs.step(-val_auc)

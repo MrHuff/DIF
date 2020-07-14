@@ -1,12 +1,9 @@
-import torch
 from datasets.dataset_DIF import *
 import pandas as pd
-from main import load_model
 from torchvision.utils import save_image
 import tqdm
 from torch.cuda.amp import autocast,GradScaler
 import os
-from torchvision.utils import make_grid
 
 def get_dl(indicator,data_list,opt):
     train_set = ImageDatasetFromFile_DIF(indicator, data_list, opt.dataroot, input_height=None,
