@@ -103,7 +103,7 @@ def main():
     #--------------build models -------------------------
     model = IntroVAE(cdim=3, hdim=opt.hdim, channels=str_to_list(opt.channels), image_size=opt.output_height).cuda()    
     if opt.pretrained:
-        load_model(model, opt.pretrained)
+        load_model(model, opt.pretrained,f'cuda:{base_gpu}')
     print(model)
             
     optimizerE = optim.Adam(model.encoder.parameters(), lr=opt.lr_e)
@@ -252,8 +252,8 @@ def main():
             
             cur_iter += 1
             
-def load_model(model, pretrained):
-    weights = torch.load(pretrained)
+def load_model(model, pretrained,map_location):
+    weights = torch.load(pretrained,map_location=map_location)
     pretrained_dict = weights['model'].state_dict()  
     model_dict = model.state_dict()
     pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}

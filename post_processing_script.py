@@ -4,11 +4,14 @@ from utils.umap import *
 from utils.feature_isolation import *
 from utils.FID import *
 from models.DIF_net import *
+from utils.loglikelihood import *
 import GPUtil
 import torch.backends.cudnn as cudnn
 import pandas as pd
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
 opt = dotdict
-opt.dataset_index = 1 #0 = mnist, 1 = fashion, 2 = celeb
+opt.dataset_index = 2 #0 = mnist, 1 = fashion, 2 = celeb
 opt.output_height = 256
 opt.batchSize = 32
 opt.J = 0.25
@@ -17,16 +20,16 @@ opt.tanh_flag = True
 opt.channels = [32, 64, 128, 256, 512, 512]
 opt.use_flow_model = False
 opt.cuda = True
-
-opt.save_path = 'model_fashion_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0/'#'model_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=False_C=100.0/'
-opt.load_path = opt.save_path+'model_epoch_180_iter_123840.pth' #'model_epoch_160_iter_145078.pth'
+opt.save_path = 'model_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=False_C=100.0/'#'model_fashion_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0/'#'model_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=False_C=100.0/'
+opt.load_path = opt.save_path+'model_epoch_160_iter_145078.pth'#'model_epoch_180_iter_123840.pth' #'model_epoch_160_iter_145078.pth'
 opt.hdim = 512
 opt.n_witness = 16
-opt.cur_it = 145083
+opt.cur_it = 145078
 opt.umap=False
-opt.feature_isolation = True
-opt.witness = True
-opt.FID= True
+opt.feature_isolation = False
+opt.witness = False
+opt.FID= False
+opt.log_likelihood=True
 opt.workers = 4
 opt.flow_depth = 4
 opt.cdim = 3
@@ -45,7 +48,7 @@ if __name__ == '__main__':
     cols = []
     val = []
     if opt.cuda:
-        base_gpu_list = GPUtil.getAvailable(order='memory', limit=2)
+        base_gpu_list = GPUtil.getAvailable(order='memory', limit=8)
         if 5 in base_gpu_list:
             base_gpu_list.remove(5)
         base_gpu = base_gpu_list[0]
@@ -70,7 +73,8 @@ if __name__ == '__main__':
             hdim=opt.hdim,
             channels=opt.channels,
             image_size=opt.output_height).cuda()
-    load_model(model,opt.load_path)
+    map_location= f'cuda:{base_gpu}'
+    load_model(model,opt.load_path,map_location)
     model.eval()
     dl_train,dl_test = dataloader_train_test(opt)
     train_z,train_c = generate_all_latents(model=model,dataloader=dl_train)
@@ -81,7 +85,7 @@ if __name__ == '__main__':
     if opt.feature_isolation:
         try:
             lasso_model = lasso_regression(in_dim=opt.hdim, o_dim=1).cuda()
-            lasso_model.load_state_dict(torch.load(opt.save_path+'lasso_latents.pth'))
+            lasso_model.load_state_dict(torch.load(opt.save_path+'lasso_latents.pth',map_location=map_location))
             lasso_model.eval()
             test_auc = auc_check(lasso_model,test_z,test_c)
         except Exception as e:
@@ -102,7 +106,7 @@ if __name__ == '__main__':
             tr_nx = round(X.shape[0] * 0.9)
             tr_ny = round(Y.shape[0] * 0.9)
             witness_obj = witness_generation(opt.hdim, opt.n_witness,X[:tr_nx,:], Y[:tr_ny,:]).cuda()
-            witness_obj.load_state_dict(torch.load(opt.save_path+'witness_object.pth'),False)
+            witness_obj.load_state_dict(torch.load(opt.save_path+'witness_object.pth',map_location))
             witness_obj.eval()
             tst_stat_test = witness_obj(test_z[~test_c,:], test_z[test_c,:])
             pval = witness_obj.get_pval_test(tst_stat_test.item())
@@ -117,7 +121,7 @@ if __name__ == '__main__':
         val.append(pval)
         try:
             lasso_model = lasso_regression(in_dim=opt.hdim, o_dim=1).cuda()
-            lasso_model.load_state_dict(torch.load(opt.save_path+'lasso_latents.pth'))
+            lasso_model.load_state_dict(torch.load(opt.save_path+'lasso_latents.pth',map_location))
             lasso_model.eval()
             preds = lasso_model(witness_obj.T)
             mask = preds>=0.5
@@ -155,7 +159,16 @@ if __name__ == '__main__':
             cols.append('prototype_FID')
             val.append(fid_prototypes)
 
+    if opt.log_likelihood:
+        cols = cols + ['log-likelihood','ELBO','log-likelihood_A','log-likelihood_B','ELBO_A','ELBO_B']
+        _loglikelihood_estimates,_elbo_estimates,_class = estimate_loglikelihoods(dl_test,model,50)
+        print(_loglikelihood_estimates.shape)
+        print(_elbo_estimates.shape)
+        ll,elbo,ll_A,ll_B,elbo_A,elbo_B=calculate_metrics(_loglikelihood_estimates, _elbo_estimates, _class)
+        val = val + [ll,elbo,ll_A,ll_B,elbo_A,elbo_B]
+
     df = pd.DataFrame([val],columns=cols)
+    print(df)
     df.to_csv(opt.save_path+'results.csv')
 
 

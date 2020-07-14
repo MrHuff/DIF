@@ -105,7 +105,7 @@ def main():
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
 
     if opt.linear_benchmark:
-        me_obj = linear_benchmark(d=opt.hdim)
+        me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu)
     else:
         me_obj = MEstat(J=opt.J,
                         test_nx=len(train_set.property_indicator)-sum(train_set.property_indicator),

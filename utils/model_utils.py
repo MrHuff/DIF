@@ -8,27 +8,53 @@ from torch.cuda.amp import autocast,GradScaler
 import os
 from torchvision.utils import make_grid
 
-def dataloader_train_test(opt):
-    data = pd.read_csv(opt.class_indicator_file)
-    train_list = data['file_name'].values.tolist()[:opt.trainsize]
-    train_property_indicator = data['class'].values.tolist()[:opt.trainsize]
+def get_dl(indicator,data_list,opt):
+    train_set = ImageDatasetFromFile_DIF(indicator, data_list, opt.dataroot, input_height=None,
+                                         crop_height=None, output_height=opt.output_height, is_mirror=False,
+                                         is_gray=opt.cdim != 3)
+    train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True,
+                                                    num_workers=opt.workers)
+    return train_data_loader
 
-    test_list = data['file_name'].values.tolist()[opt.trainsize:-1]
-    test_property_indicator = data['class'].values.tolist()[opt.trainsize:-1]
+def dataloader_train_val_test(opt):
+    data = pd.read_csv(opt.class_indicator_file)
+    train_list_1 = data['file_name'].values.tolist()[:opt.trainsize]
+    train_property_indicator_1 = data['class'].values.tolist()[:opt.trainsize]
+
+    train_list = train_list_1[:(opt.trainsize-opt.valsize)]
+    train_property_indicator = train_property_indicator_1[:(opt.trainsize-opt.valsize)]
+
+    val_list = train_list_1[(opt.trainsize - opt.valsize):]
+    val_property_indicator = train_property_indicator_1[(opt.trainsize - opt.valsize):]
+
+    test_list = data['file_name'].values.tolist()[opt.trainsize:]
+    test_property_indicator = data['class'].values.tolist()[opt.trainsize:]
 
     # swap out the train files
 
     assert len(train_list) > 0
 
-    train_set = ImageDatasetFromFile_DIF(train_property_indicator, train_list, opt.dataroot, input_height=None,
-                                         crop_height=None, output_height=opt.output_height, is_mirror=False,is_gray=opt.cdim!=3)
-    train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True,
-                                                    num_workers=opt.workers)
+    train_data_loader = get_dl(train_property_indicator, train_list, opt)
+    val_data_loader = get_dl(val_property_indicator, val_list, opt)
+    test_data_loader = get_dl(test_property_indicator, test_list, opt)
 
-    test_set = ImageDatasetFromFile_DIF(test_property_indicator, test_list, opt.dataroot, input_height=None,
-                                         crop_height=None, output_height=opt.output_height, is_mirror=False,is_gray=opt.cdim!=3)
-    test_data_loader = torch.utils.data.DataLoader(test_set, batch_size=opt.batchSize, shuffle=True,
-                                                    num_workers=opt.workers)
+    return train_data_loader,val_data_loader,test_data_loader
+
+def dataloader_train_test(opt):
+    data = pd.read_csv(opt.class_indicator_file)
+    train_list = data['file_name'].values.tolist()[:opt.trainsize]
+    train_property_indicator = data['class'].values.tolist()[:opt.trainsize]
+
+    test_list = data['file_name'].values.tolist()[opt.trainsize:]
+    test_property_indicator = data['class'].values.tolist()[opt.trainsize:]
+
+    # swap out the train files
+
+    assert len(train_list) > 0
+
+    train_data_loader = get_dl(train_property_indicator,train_list,opt)
+    test_data_loader = get_dl(test_property_indicator,test_list,opt)
+
 
     return train_data_loader,test_data_loader
 

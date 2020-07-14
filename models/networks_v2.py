@@ -167,3 +167,30 @@ class IntroVAEv2(nn.Module):
         return error
 
 
+class Classifier(nn.Module):
+    def __init__(self, cdim=3, channels=[64, 128, 256, 512, 512, 512], image_size=256):
+        super(Classifier, self).__init__()
+
+        assert (2 ** len(channels)) * 4 == image_size
+
+        cc = channels[0]
+        self.main = nn.Sequential(
+            nn.utils.spectral_norm(nn.Conv2d(cdim, cc, 5, 1, 2, bias=False)),
+            nn.BatchNorm2d(cc),
+            CustomSwish(),
+            nn.AvgPool2d(2),
+        )
+
+        sz = image_size // 2
+        for enum,ch in enumerate(channels[1:]):
+            self.main.add_module('res_in_{}'.format(sz), _Residual_Block_v2(cc, ch, scale=1.0))
+            self.main.add_module('down_to_{}'.format(sz // 2), nn.AvgPool2d(2))
+            cc, sz = ch, sz // 2
+        # self.main.add_module('Attention_{}'.format(sz),Self_Attn(cc))
+        self.main.add_module('res_in_{}'.format(sz), _Residual_Block_v2(cc, cc, scale=1.0))
+        self.fc = nn.Linear((cc) * 4 * 4, 1)
+
+    def forward(self, x):
+        y = self.main(x).view(x.size(0), -1)
+        y = self.fc(y)
+        return y.squeeze()
