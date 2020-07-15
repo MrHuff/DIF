@@ -27,7 +27,7 @@ class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/f
 train_sizes = [13000,22000,29000]
 val_sizes = [500,500,500]
 image_size = [64,256,256]
-epochs = 10
+epochs = [1,10,10]
 
 def val_loop(dl,model):
     c_cat = []
@@ -56,6 +56,7 @@ if __name__ == '__main__':
     torch.cuda.set_device(base_gpu)
     for p in range(3):
         opt.dataset_index = p  # 0 = mnist, 1 = fashion, 2 = celeb
+        opt.epochs=epochs[opt.dataset_index]
         opt.channels = channels[opt.dataset_index]
         opt.save_path = save_paths[opt.dataset_index]
         opt.class_indicator_file = class_indicator_files_list[opt.dataset_index]
@@ -71,7 +72,7 @@ if __name__ == '__main__':
         pos_weight = torch.tensor((len(dl_train.dataset.property_indicator)-sum(dl_train.dataset.property_indicator))/sum(dl_train.dataset.property_indicator)).cuda()
         objective = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,patience=2,factor=0.5)
-        for i in tqdm.trange(epochs):
+        for i in tqdm.trange(opt.epochs):
             for iteration, (batch, c) in enumerate(tqdm.tqdm(dl_train)):
                 with autocast():
                     batch = batch.cuda()
@@ -90,7 +91,7 @@ if __name__ == '__main__':
             print(f'val auc {i}:', val_auc)
             print(f'val auc {i}:', test_auc)
 
-        df = pd.DataFrame([val_auc,test_auc],columns=['val auc','test auc'])
+        df = pd.DataFrame([[val_auc,test_auc]],columns=['val auc','test auc'])
         print(df)
         if not os.path.exists(opt.save_path):
             os.makedirs(opt.save_path)
