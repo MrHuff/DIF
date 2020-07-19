@@ -5,6 +5,10 @@ import tqdm
 from torch.cuda.amp import autocast,GradScaler
 import os
 
+def get_model(pretrained,map_location):
+    weights = torch.load(pretrained,map_location=map_location)
+    model = weights['model']
+    return model
 def get_dl(indicator,data_list,opt):
     train_set = ImageDatasetFromFile_DIF(indicator, data_list, opt.dataroot, input_height=None,
                                          crop_height=None, output_height=opt.output_height, is_mirror=False,
@@ -108,7 +112,7 @@ def feature_traverse(latent,id,C):
     return torch.stack(container,dim=0)
 
 
-def feature_isolation(C, z_test, c_test, lasso_model, model,folder_path):
+def feature_isolation(C, z_test, c_test, lasso_model, model,folder_path,alpha):
     x_test = z_test[~c_test, :]
     y_test = z_test[c_test, :]
     imgs_x = x_test[0:5, :]
@@ -131,9 +135,9 @@ def feature_isolation(C, z_test, c_test, lasso_model, model,folder_path):
             a = list_id_x[i][j]
             b = list_id_y[i][j]
             imgs_a = generate_image(model,a)
-            save_images_group(imgs_a,folder_path,'feature_isolate_A',f'isolate_feature_{i}_pic_{j}')
+            save_images_group(imgs_a,folder_path,f'feature_isolate_A_{alpha}',f'isolate_feature_{i}_pic_{j}')
             imgs_b = generate_image(model,b)
-            save_images_group(imgs_b,folder_path,'feature_isolate_B',f'isolate_feature_{i}_pic_{j}')
+            save_images_group(imgs_b,folder_path,f'feature_isolate_B_{alpha}',f'isolate_feature_{i}_pic_{j}')
             j+=1
 
 def traverse(z_test, c_test, model,folder_path):

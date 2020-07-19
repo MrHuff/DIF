@@ -3,13 +3,84 @@ from gpytorch.kernels import RBFKernel,Kernel
 import torch
 import scipy.stats as stats
 import numpy as np
+
+
+def init_locs_2randn(X_torch,Y_torch, n_test_locs, subsample=5000):
+    """Fit a Gaussian to each dataset and draw half of n_test_locs from
+    each. This way of initialization can be expensive if the input
+    dimension is large.
+
+    """
+
+    X = X_torch.cpu().numpy()
+    Y = Y_torch.cpu().numpy()
+    n = X.shape[0]
+    seed = np.random.randint(0,1000)
+    np.random.seed(seed)
+        # Subsample X, Y if needed. Useful if the data are too large.
+    if n > subsample:
+        X = X[np.random.choice(X.shape[0], subsample, replace=False),:]
+        Y = Y[np.random.choice(Y.shape[0], subsample, replace=False),:]
+
+    d = X.shape[1]
+    if d > 5000:
+        Tx = np.mean(X, axis=0)
+        Ty = np.mean(Y, axis=0)
+        T0 = np.vstack((Tx, Ty))
+    else:
+        # fit a Gaussian to each of X, Y
+        mean_x = np.mean(X, 0)
+        mean_y = np.mean(Y, 0)
+        cov_x = np.cov(X.T)
+        [Dx, Vx] = np.linalg.eig(cov_x + 1e-3 * np.eye(d))
+        Dx = np.real(Dx)
+        Vx = np.real(Vx)
+        # a hack in case the data are high-dimensional and the covariance matrix
+        # is low rank.
+        Dx[Dx <= 0] = 1e-3
+
+        # shrink the covariance so that the drawn samples will not be so
+        # far away from the data
+        eig_pow = 0.9  # 1.0 = not shrink
+        reduced_cov_x = Vx.dot(np.diag(Dx ** eig_pow)).dot(Vx.T) + 1e-3 * np.eye(d)
+        cov_y = np.cov(Y.T)
+        [Dy, Vy] = np.linalg.eig(cov_y + 1e-3 * np.eye(d))
+        Vy = np.real(Vy)
+        Dy = np.real(Dy)
+        Dy[Dy <= 0] = 1e-3
+        reduced_cov_y = Vy.dot(np.diag(Dy ** eig_pow).dot(Vy.T)) + 1e-3 * np.eye(d)
+        # integer division
+        Jx = n_test_locs//2
+        Jy = n_test_locs - Jx
+
+        # from IPython.core.debugger import Tracer
+        # t = Tracer()
+        # t()
+        assert Jx + Jy == n_test_locs, 'total test locations is not n_test_locs'
+        Tx = np.random.multivariate_normal(mean_x, reduced_cov_x, Jx)
+        Ty = np.random.multivariate_normal(mean_y, reduced_cov_y, Jy)
+        T0 = np.vstack((Tx, Ty))
+
+    return T0
+
 class witness_generation(torch.nn.Module):
     def __init__(self,hdim,n_witnesses,X,Y,coeff=1e-2,init_type='randn'):
         super(witness_generation, self).__init__()
         self.hdim = hdim
         self.n_witnesses= n_witnesses
+
         if init_type=='randn':
             init_vals = torch.randn(n_witnesses,hdim)
+        elif init_type=='median_noise':
+            x_median,_ = X.median(dim=0)
+            y_median,_ = Y.median(dim=0)
+            cat = torch.cat([x_median.unsqueeze(0).expand(n_witnesses//2,-1),y_median.unsqueeze(0).expand(n_witnesses//2,-1)])
+            init_vals = cat + torch.randn_like(cat)
+
+        elif init_type=='gaussian_fit':
+            init_vals = torch.tensor(init_locs_2randn(X,Y,n_test_locs=n_witnesses)).float()
+
+
         self.T = torch.nn.Parameter(init_vals,requires_grad=True)
         self.register_buffer('X',X)
         self.register_buffer('Y',Y)
@@ -70,7 +141,9 @@ class witness_generation(torch.nn.Module):
     def return_witnesses(self):
         return self.T.detach()
 
-def training_loop_witnesses(hdim,
+def training_loop_witnesses(
+        save_path,
+        hdim,
                             n_witnesses,
                             train_latents,
                             c_train,
@@ -78,8 +151,9 @@ def training_loop_witnesses(hdim,
                             c_test,
                             coeff=1e-2,
                             init_type='randn',
-                            cycles=40,
-                            its = 50):
+                            cycles=20,
+                            its = 100,
+                            patience=5):
     X = train_latents[~c_train,:]
     Y = train_latents[c_train,:]
     tr_nx = round(X.shape[0]*0.9)
@@ -92,6 +166,8 @@ def training_loop_witnesses(hdim,
     witness_obj = witness_generation(hdim, n_witnesses, X[:tr_nx,:], Y[:tr_ny,:], coeff=coeff, init_type=init_type).cuda()
     optimizer = torch.optim.Adam(witness_obj.parameters(), lr=1e-1)
     lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, factor=0.5)
+    counter = 0
+    best = np.inf
     for i in range(cycles):
         for t in [True,False]:
             if t:
@@ -105,11 +181,25 @@ def training_loop_witnesses(hdim,
                 optimizer.step()
             with torch.no_grad():
                 val_stat_test = witness_obj(val_X, val_Y)
-            print(f'test statistic: {val_stat_test.item()}')
+                tst_stat_test = witness_obj(test_X, test_Y)
+
+            print(f'test statistic val data: {val_stat_test.item()}')
+            print(f'test statistic test data: {tst_stat_test.item()}')
             lrs.step(val_stat_test.item())
+            if val_stat_test.item()<best:
+                best = val_stat_test.item()
+                torch.save(witness_obj.state_dict(), save_path + 'witness_object.pth')
+                print(f'best score: {val_stat_test.item()}')
+                print(f'best score: {tst_stat_test.item()}')
+            else:
+                counter+=1
+        if counter>=patience:
+            print('no more improvement breaking')
+            break
     with torch.no_grad():
+        witness_obj.load_state_dict(torch.load(save_path+'witness_object.pth'))
         tst_stat_test = witness_obj(test_X,test_Y)
-    pval = witness_obj.get_pval_test(tst_stat_test.item())
+    pval = witness_obj.get_pval_test(-tst_stat_test.item())
     return witness_obj,pval
 
 

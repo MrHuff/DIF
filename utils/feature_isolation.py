@@ -33,7 +33,7 @@ class lasso_regression(torch.nn.Module):
     def forward(self,x):
         return self.linear(x)
 
-def lasso_train(data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,bs_rate=1.0):
+def lasso_train(save_path,data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,bs_rate=1.0,patience = 10):
     train_idx = np.random.randn(data_train.shape[0])<=0.9
     X_train = data_train[train_idx,:]
     Y_train = c_train[train_idx]
@@ -50,8 +50,8 @@ def lasso_train(data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,bs_r
     objective = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     loader  = DataLoader(dataset,batch_size = bs)
     lrs = torch.optim.lr_scheduler.ReduceLROnPlateau(opt,factor=0.5,patience=2)
-
-
+    best = -np.inf
+    counter = 0
     for i in range(epochs):
         for j,(X_batch,y_batch) in enumerate(loader):
             y_batch = y_batch.cuda()
@@ -68,5 +68,16 @@ def lasso_train(data_train,c_train,data_test,c_test,reg_parameter,lr,epochs,bs_r
             print(f'val auc: {val_auc}')
             print(f'test auc: {test_auc}')
             lrs.step(-val_auc)
+            if val_auc>best:
+                best = val_auc
+                counter = 0
+                print(f'best auc: {val_auc}')
+                print(f'best auc: {test_auc}')
+                torch.save(model.state_dict(), save_path + f'lasso_latents_{reg_parameter}.pth')
+            else:
+                counter+=1
+            if counter>=patience:
+                print('no more improvement breaking')
+                break
     return model,test_auc
 
