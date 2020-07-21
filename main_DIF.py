@@ -51,7 +51,7 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
-    param_suffix = f"{opt.prefix}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_linearb={opt.linear_benchmark}"
+    param_suffix = f"{opt.prefix}_bs={opt.batchSize}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_linearb={opt.linear_benchmark}"
     opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)

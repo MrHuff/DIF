@@ -9,31 +9,22 @@ import GPUtil
 import torch.backends.cudnn as cudnn
 import pandas as pd
 
-#regress on several differnt alphas... 0 1e-3, 1e-2,1e-1,1
-
-from main import load_model
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
+
+
 opt = dotdict
-opt.dataset_index = 2 #0 = mnist, 1 = fashion, 2 = celeb
 opt.batchSize = 32
 opt.J = 0.25
-# opt.tanh_flag = True
-# opt.flow_depth = 3
-# opt.channels = [32, 64, 128, 256, 512, 512]
-# opt.output_height = 256
-# opt.hdim = 512
 opt.use_flow_model = False
 opt.cuda = True
-opt.save_path = 'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0_linearb=False/'
-opt.load_path = opt.save_path+'model_epoch_200_iter_241760.pth'#'model_epoch_180_iter_123840.pth' #'model_epoch_160_iter_145078.pth'
 opt.n_witness = 16
 opt.cur_it = 123
 opt.umap=True
 opt.feature_isolation = True
 opt.witness = True
 opt.FID= True
-opt.log_likelihood=False
+opt.log_likelihood=True
 opt.workers = 4
 opt.C=10
 dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/"]
@@ -44,8 +35,25 @@ opt.FID_prototypes = True
 cdims = [1,3,3]
 img_height=[64,256,256]
 hdim_list=[16,512,512]
+
+
+save_paths_faces = ['modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0_linearb=False',
+                    'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=rbf_tanh=True_C=10.0_linearb=False',
+                    'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True']
+model_paths_faces = ['model_epoch_250_iter_226705.pth','model_epoch_250_iter_302201.pth','model_epoch_240_iter_290106.pth']
+
+save_paths_fashion = ['resultsfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
+                      'resultsfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=linear_tanh=True_C=10.0_linearb=False',
+                      'resultsfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True']
+model_paths_fashion = ['model_epoch_240_iter_220080.pth','model_epoch_240_iter_165120.pth','model_epoch_240_iter_165120.pth']
+save_paths_mnist = ['resultsmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
+                    'resultsmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True',
+                    'resultsmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=linear_tanh=True_C=10.0_linearb=False']
+model_paths_mnist = ['model_epoch_24_iter_9760.pth','model_epoch_24_iter_9760.pth','model_epoch_24_iter_9760.pth']
+
+
 #Prototypes are fucking weird, needs a fix...
-if __name__ == '__main__':
+def run_post_process(opt):
     opt.dataroot = dataroots_list[opt.dataset_index]
     opt.class_indicator_file = class_indicator_files_list[opt.dataset_index]
     opt.trainsize=train_sizes[opt.dataset_index]
@@ -170,8 +178,12 @@ if __name__ == '__main__':
     df.to_csv(opt.save_path+'results.csv')
 
 
-
-
+if __name__ == '__main__':
+    opt.dataset_index = 2 #0 = mnist, 1 = fashion, 2 = celeb
+    for i,el in enumerate(save_paths_faces):
+        opt.save_path = el+'/'
+        opt.load_path = opt.save_path+model_paths_fashion[i]
+        run_post_process(opt)
 
 
 

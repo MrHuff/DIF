@@ -13,7 +13,7 @@ CUDA_VISIBLE_DEVICES=4 python main.py  --hdim=512 --output_height=256 --channels
 
 #CELEBHQ
 ###benchmark run
-#python main_DIF.py --hdim=512 --prefix "facesHQv3" --output_height=256 "--channels=32, 64, 128, 256, 512, 512" --m_plus=1000 --weight_rec=1.0 --weight_kl=1.0 --weight_neg=0.5 --num_vae=10 --dataroot=/homes/rhu/data/data256x256 --trainsize=29000 --test_iter=1000 --save_iter=10 --start_epoch=0 --batchSize=32 --nrow=8 --lr_e=0.0002 --lr_g=0.0002 --cuda --nEpochs=300 --class_indicator_file=/homes/rhu/data/celebA_hq_gender.csv --fp_16 --J=0.25 --lambda_me=0 --C=10 --tanh_flag
+#python main_DIF.py --hdim=512 --prefix "facesHQv3" --output_height=256 "--channels=32, 64, 128, 256, 512, 512" --m_plus=1000 --weight_rec=1.0 --weight_kl=1.0 --weight_neg=0.5 --num_vae=10 --dataroot=/homes/rhu/data/data256x256 --trainsize=29000 --test_iter=1000 --save_iter=10 --start_epoch=0 --batchSize=16 --nrow=8 --lr_e=0.0002 --lr_g=0.0002 --cuda --nEpochs=300 --class_indicator_file=/homes/rhu/data/celebA_hq_gender.csv --fp_16 --J=0.25 --lambda_me=0 --C=10 --tanh_flag
 ###encoder run
 #python main_DIF.py --hdim=512 --prefix "facesHQv3" --output_height=256 "--channels=32, 64, 128, 256, 512, 512" --m_plus=1000 --weight_rec=1.0 --weight_kl=1.0 --weight_neg=0.5 --num_vae=10 --dataroot=/homes/rhu/data/data256x256 --trainsize=29000 --test_iter=1000 --save_iter=10 --start_epoch=0 --batchSize=32 --nrow=8 --lr_e=0.0002 --lr_g=0.0002 --cuda --nEpochs=300 --class_indicator_file=/homes/rhu/data/celebA_hq_gender.csv --fp_16 --J=0.25 --lambda_me=0.3 --C=10 --tanh_flag --kernel "linear"
 ###flow run
@@ -28,7 +28,7 @@ CUDA_VISIBLE_DEVICES=4 python main.py  --hdim=512 --output_height=256 --channels
 ###benchmark run
 #trials: test different m's. Different KL weights, different neg-KL. Lowering KL seemed to have best effect!
 
-#python main_DIF.py --prefix "fashion" --hdim=512 --output_height=256 "--channels=32, 64, 128, 256, 512, 512" --m_plus=1000 --weight_rec=1.0 --weight_kl=1.0 --weight_neg=0.05 --num_vae=10 --dataroot=/homes/rhu/data/fashion_256x256 --trainsize=22000 --test_iter=1000 --save_iter=10 --start_epoch=0 --batchSize=32 --nrow=8 --lr_e=0.0002 --lr_g=0.0002 --cuda --nEpochs=300 --class_indicator_file=/homes/rhu/data/fashion_price_class.csv --fp_16 --J=0.25 --lambda_me=0 --C=10 --tanh_flag
+#python main_DIF.py --prefix "fashion" --hdim=512 --output_height=256 "--channels=32, 64, 128, 256, 512, 512" --m_plus=1000 --weight_rec=1.0 --weight_kl=1.0 --weight_neg=0.05 --num_vae=10 --dataroot=/homes/rhu/data/fashion_256x256 --trainsize=22000 --test_iter=1000 --save_iter=10 --start_epoch=0 --batchSize=16 --nrow=8 --lr_e=0.0002 --lr_g=0.0002 --cuda --nEpochs=300 --class_indicator_file=/homes/rhu/data/fashion_price_class.csv --fp_16 --J=0.25 --lambda_me=0 --C=10 --tanh_flag
 #encoder run
 #python main_DIF.py --prefix "fashion" --hdim=512 --output_height=256 "--channels=32, 64, 128, 256, 512, 512" --m_plus=1000 --weight_rec=1.0 --weight_kl=0.1 --weight_neg=0.5 --num_vae=10 --dataroot=/homes/rhu/data/fashion_256x256 --trainsize=22000 --test_iter=1000 --save_iter=10 --start_epoch=0 --batchSize=24 --nrow=8 --lr_e=0.0002 --lr_g=0.0002 --cuda --nEpochs=300 --class_indicator_file=/homes/rhu/data/fashion_price_class.csv --fp_16 --J=0.25 --lambda_me=0.01 --C=10 --tanh_flag --kernel "linear"
 ###flow run
