@@ -38,9 +38,9 @@ hdim_list=[16,512,512]
 
 
 save_paths_faces = ['modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0_linearb=False',
-                    'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=rbf_tanh=True_C=10.0_linearb=False',
+                    'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
                     'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True']
-model_paths_faces = ['model_epoch_250_iter_226705.pth','model_epoch_250_iter_302201.pth','model_epoch_240_iter_290106.pth']
+model_paths_faces = ['model_epoch_250_iter_302201.pth','model_epoch_250_iter_226705.pth','model_epoch_240_iter_290106.pth']
 
 save_paths_fashion = ['resultsfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
                       'resultsfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=linear_tanh=True_C=10.0_linearb=False',
@@ -99,6 +99,7 @@ def run_post_process(opt):
             lasso_model,test_auc = lasso_train(opt.save_path,train_z,train_c,test_z,test_c,alp,1e-3,100,bs_rate=1e-2)
             lasso_model.load_state_dict(torch.load(opt.save_path+f'lasso_latents_{alp}.pth',map_location=map_location))
             lasso_model.eval()
+            weights_histogram(lasso_model,opt.save_path,alp)
             with torch.no_grad():
                 preds = lasso_model(test_z)
             test_auc = auc_check(preds, test_c)
@@ -182,7 +183,7 @@ if __name__ == '__main__':
     opt.dataset_index = 2 #0 = mnist, 1 = fashion, 2 = celeb
     for i,el in enumerate(save_paths_faces):
         opt.save_path = el+'/'
-        opt.load_path = opt.save_path+model_paths_fashion[i]
+        opt.load_path = opt.save_path+model_paths_faces[i]
         run_post_process(opt)
 
 

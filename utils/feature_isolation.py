@@ -2,6 +2,13 @@ import torch
 from sklearn import metrics
 from torch.utils.data import Dataset,DataLoader
 import numpy as np
+import matplotlib.pyplot as plt
+
+def weights_histogram(linear_model,save_path,alpha):
+       w = linear_model.linear.weight.detach().cpu().numpy()
+       x = np.arange(0,w.shape[0])
+       plt.bar(x,w)
+       plt.savefig(save_path+f'w_plot_{alpha}.png')
 
 def auc_check(y_pred,Y):
     with torch.no_grad():
@@ -9,7 +16,6 @@ def auc_check(y_pred,Y):
         fpr, tpr, thresholds = metrics.roc_curve(Y.cpu().numpy(), y_pred, pos_label=1)
         auc =  metrics.auc(fpr, tpr)
         return auc
-
 
 class regression_dataset(Dataset):
     def __init__(self, X,Y):
@@ -26,7 +32,6 @@ class lasso_regression(torch.nn.Module):
     def __init__(self,in_dim,o_dim):
         super(lasso_regression,self).__init__()
         self.linear = torch.nn.Linear(in_features=in_dim,out_features= o_dim,bias=True)
-
     def lasso_term(self):
         return torch.norm(self.linear.weight,p=1)
 

@@ -23,7 +23,6 @@ def make_binary_class_umap_plot(all_h,c,save_path,cur_it,description):
     ax.legend()
     ax.grid(True)
     plt.savefig(f'{save_path}/intro-vae_umap_{description}_{cur_it}.png')
-    plt.clf()
 
 
 
