@@ -26,13 +26,13 @@ opt.J = 0.25
 opt.use_flow_model = False
 opt.cuda = True
 opt.save_path = 'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0_linearb=False/'
-opt.load_path = opt.save_path+'model_epoch_250_iter_226705.pth'#'model_epoch_180_iter_123840.pth' #'model_epoch_160_iter_145078.pth'
+opt.load_path = opt.save_path+'model_epoch_200_iter_241760.pth'#'model_epoch_180_iter_123840.pth' #'model_epoch_160_iter_145078.pth'
 opt.n_witness = 16
 opt.cur_it = 123
-opt.umap=False
-opt.feature_isolation = False
+opt.umap=True
+opt.feature_isolation = True
 opt.witness = True
-opt.FID= False
+opt.FID= True
 opt.log_likelihood=False
 opt.workers = 4
 opt.C=10
@@ -78,22 +78,22 @@ if __name__ == '__main__':
     if opt.feature_isolation:
         alphas = [0,1e-3,1e-2,1e-1,1.]
         for alp in alphas:
-            try:
-                lasso_model = lasso_regression(in_dim=opt.hdim, o_dim=1).cuda()
-                lasso_model.load_state_dict(torch.load(opt.save_path+f'lasso_latents_{alp}.pth',map_location=map_location))
-                lasso_model.eval()
-                with torch.no_grad():
-                    preds = lasso_model(test_z)
-                test_auc = auc_check(preds,test_c)
-            except Exception as e:
-                print(e)
-                print("No latent regression model exists, training a new one!")
-                lasso_model,test_auc = lasso_train(opt.save_path,train_z,train_c,test_z,test_c,alp,1e-3,100,bs_rate=1e-2)
-                lasso_model.load_state_dict(torch.load(opt.save_path+f'lasso_latents_{alp}.pth',map_location=map_location))
-                lasso_model.eval()
-                with torch.no_grad():
-                    preds = lasso_model(test_z)
-                test_auc = auc_check(preds, test_c)
+            # try:
+            #     lasso_model = lasso_regression(in_dim=opt.hdim, o_dim=1).cuda()
+            #     lasso_model.load_state_dict(torch.load(opt.save_path+f'lasso_latents_{alp}.pth',map_location=map_location))
+            #     lasso_model.eval()
+            #     with torch.no_grad():
+            #         preds = lasso_model(test_z)
+            #     test_auc = auc_check(preds,test_c)
+            # except Exception as e:
+            #     print(e)
+            #     print("No latent regression model exists, training a new one!")
+            lasso_model,test_auc = lasso_train(opt.save_path,train_z,train_c,test_z,test_c,alp,1e-3,100,bs_rate=1e-2)
+            lasso_model.load_state_dict(torch.load(opt.save_path+f'lasso_latents_{alp}.pth',map_location=map_location))
+            lasso_model.eval()
+            with torch.no_grad():
+                preds = lasso_model(test_z)
+            test_auc = auc_check(preds, test_c)
             cols.append(f'test_auc_{alp}')
             val.append(test_auc)
             feature_isolation(opt.C,test_z,test_c,lasso_model,model,opt.save_path,alp)
