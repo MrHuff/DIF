@@ -21,34 +21,37 @@ opt.J = 0.25
 # opt.tanh_flag = True
 # opt.flow_depth = 3
 # opt.channels = [32, 64, 128, 256, 512, 512]
-opt.output_height = 256
-opt.cdim = 3
-opt.hdim = 512
+# opt.output_height = 256
+# opt.hdim = 512
 opt.use_flow_model = False
 opt.cuda = True
-opt.save_path = 'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True/'
-opt.load_path = opt.save_path+'model_epoch_180_iter_217586.pth'#'model_epoch_180_iter_123840.pth' #'model_epoch_160_iter_145078.pth'
+opt.save_path = 'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0_linearb=False/'
+opt.load_path = opt.save_path+'model_epoch_250_iter_226705.pth'#'model_epoch_180_iter_123840.pth' #'model_epoch_160_iter_145078.pth'
 opt.n_witness = 16
 opt.cur_it = 123
 opt.umap=False
-opt.feature_isolation = True
+opt.feature_isolation = False
 opt.witness = True
-opt.FID= True
-opt.log_likelihood=True
+opt.FID= False
+opt.log_likelihood=False
 opt.workers = 4
-
+opt.C=10
 dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/"]
 class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv"]
 train_sizes = [13000,22000,29000]
 opt.FID_fake = True
 opt.FID_prototypes = True
 cdims = [1,3,3]
-
+img_height=[64,256,256]
+hdim_list=[16,512,512]
+#Prototypes are fucking weird, needs a fix...
 if __name__ == '__main__':
     opt.dataroot = dataroots_list[opt.dataset_index]
     opt.class_indicator_file = class_indicator_files_list[opt.dataset_index]
     opt.trainsize=train_sizes[opt.dataset_index]
-    opt.C = cdims[opt.dataset_index]
+    opt.cdim = cdims[opt.dataset_index]
+    opt.hdim = hdim_list[opt.dataset_index]
+    opt.output_height=img_height[opt.dataset_index]
     print(opt.dataroot)
     print(opt.class_indicator_file)
     cols = []
@@ -96,20 +99,20 @@ if __name__ == '__main__':
             feature_isolation(opt.C,test_z,test_c,lasso_model,model,opt.save_path,alp)
     if opt.witness:
         #add load clause
-        try:
-            X = train_z[~train_c, :]
-            Y = train_z[train_c, :]
-            tr_nx = round(X.shape[0] * 0.9)
-            tr_ny = round(Y.shape[0] * 0.9)
-            witness_obj = witness_generation(opt.hdim, opt.n_witness,X[:tr_nx,:], Y[:tr_ny,:]).cuda()
-            witness_obj.load_state_dict(torch.load(opt.save_path+'witness_object.pth',map_location))
-            witness_obj.eval()
-            tst_stat_test = witness_obj(test_z[~test_c,:], test_z[test_c,:])
-            pval = witness_obj.get_pval_test(-tst_stat_test.item())
-        except Exception as e:
-            print(e)
-            print("No witness model exists, training a new one!")
-            witness_obj, pval = training_loop_witnesses(opt.save_path,opt.hdim, opt.n_witness, train_z, train_c, test_z, test_c,init_type='gaussian_fit')
+        # try:
+        #     X = train_z[~train_c, :]
+        #     Y = train_z[train_c, :]
+        #     tr_nx = round(X.shape[0] * 0.9)
+        #     tr_ny = round(Y.shape[0] * 0.9)
+        #     witness_obj = witness_generation(opt.hdim, opt.n_witness,X[:tr_nx,:], Y[:tr_ny,:]).cuda()
+        #     witness_obj.load_state_dict(torch.load(opt.save_path+'witness_object.pth',map_location))
+        #     witness_obj.eval()
+        #     tst_stat_test = witness_obj(test_z[~test_c,:], test_z[test_c,:])
+        #     pval = witness_obj.get_pval_test(-tst_stat_test.item())
+        # except Exception as e:
+        #     print(e)
+        #     print("No witness model exists, training a new one!")
+        witness_obj, pval = training_loop_witnesses(opt.save_path,opt.hdim, opt.n_witness, train_z, train_c, test_z, test_c,init_type='gaussian_fit')
 
         witnesses_tensor = generate_image(model,witness_obj.T)
         cols.append('test_pval')
