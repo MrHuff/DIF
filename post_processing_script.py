@@ -53,7 +53,7 @@ model_paths_mnist = ['model_epoch_24_iter_9760.pth','model_epoch_24_iter_9760.pt
 
 
 #Prototypes are fucking weird, needs a fix...
-def run_post_process(opt):
+def run_post_process(opt,base_gpu):
     opt.dataroot = dataroots_list[opt.dataset_index]
     opt.class_indicator_file = class_indicator_files_list[opt.dataset_index]
     opt.trainsize=train_sizes[opt.dataset_index]
@@ -64,15 +64,6 @@ def run_post_process(opt):
     print(opt.class_indicator_file)
     cols = []
     val = []
-    if opt.cuda:
-        base_gpu_list = GPUtil.getAvailable(order='memory', limit=8)
-        if 5 in base_gpu_list:
-            base_gpu_list.remove(5)
-        base_gpu = base_gpu_list[0]
-        cudnn.benchmark = True
-    elif torch.cuda.is_available() and not opt.cuda:
-        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-    torch.cuda.set_device(base_gpu)
     map_location= f'cuda:{base_gpu}'
     model= get_model(opt.load_path,map_location)
     print(model)
@@ -181,10 +172,22 @@ def run_post_process(opt):
 
 if __name__ == '__main__':
     opt.dataset_index = 2 #0 = mnist, 1 = fashion, 2 = celeb
-    for i,el in enumerate(save_paths_faces):
-        opt.save_path = el+'/'
-        opt.load_path = opt.save_path+model_paths_faces[i]
-        run_post_process(opt)
+    if opt.cuda:
+        base_gpu_list = GPUtil.getAvailable(order='memory', limit=8)
+        if 5 in base_gpu_list:
+            base_gpu_list.remove(5)
+        base_gpu = base_gpu_list[0]
+        cudnn.benchmark = True
+    elif torch.cuda.is_available() and not opt.cuda:
+        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+    torch.cuda.set_device(base_gpu)
+
+    for a,b in zip([save_paths_faces,save_paths_fashion,save_paths_mnist],[model_paths_faces,model_paths_fashion,model_paths_mnist]):
+        for i,el in enumerate(a):
+            opt.save_path = el+'/'
+            opt.load_path = opt.save_path+b[i]
+
+            run_post_process(opt,base_gpu)
 
 
 

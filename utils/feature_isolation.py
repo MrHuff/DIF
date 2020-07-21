@@ -5,10 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def weights_histogram(linear_model,save_path,alpha):
-       w = linear_model.linear.weight.detach().cpu().numpy()
-       x = np.arange(0,w.shape[0])
-       plt.bar(x,w)
-       plt.savefig(save_path+f'w_plot_{alpha}.png')
+    w = linear_model.linear.weight.detach().cpu().numpy()
+    plt.bar([i for i in range(w.shape[1])], w.squeeze())
+    plt.savefig(save_path+f'w_plot_{alpha}.png')
+    plt.clf()
 
 def auc_check(y_pred,Y):
     with torch.no_grad():
