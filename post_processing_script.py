@@ -42,14 +42,14 @@ save_paths_faces = ['modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lamb
                     'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True']
 model_paths_faces = ['model_epoch_250_iter_302201.pth','model_epoch_250_iter_226705.pth','model_epoch_240_iter_290106.pth']
 
-save_paths_fashion = ['resultsfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
-                      'resultsfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=linear_tanh=True_C=10.0_linearb=False',
-                      'resultsfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True']
+save_paths_fashion = ['modelfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
+                      'modelfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
+                      'modelfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True']
 model_paths_fashion = ['model_epoch_240_iter_220080.pth','model_epoch_240_iter_165120.pth','model_epoch_240_iter_165120.pth']
-save_paths_mnist = ['resultsmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
-                    'resultsmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True',
-                    'resultsmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=linear_tanh=True_C=10.0_linearb=False']
-model_paths_mnist = ['model_epoch_24_iter_9760.pth','model_epoch_24_iter_9760.pth','model_epoch_24_iter_9760.pth']
+save_paths_mnist = ['modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
+                    'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True',
+                    'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False']
+model_paths_mnist = ['model_epoch_24_iter_9760.pth','model_epoch_24_iter_9761.pth','model_epoch_24_iter_9760.pth']
 
 
 #Prototypes are fucking weird, needs a fix...
@@ -171,7 +171,6 @@ def run_post_process(opt,base_gpu):
 
 
 if __name__ == '__main__':
-    opt.dataset_index = 2 #0 = mnist, 1 = fashion, 2 = celeb
     if opt.cuda:
         base_gpu_list = GPUtil.getAvailable(order='memory', limit=8)
         if 5 in base_gpu_list:
@@ -182,7 +181,8 @@ if __name__ == '__main__':
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     torch.cuda.set_device(base_gpu)
 
-    for a,b in zip([save_paths_faces,save_paths_fashion,save_paths_mnist],[model_paths_faces,model_paths_fashion,model_paths_mnist]):
+    for c,a,b in zip([0],[save_paths_mnist],[model_paths_mnist]):
+        opt.dataset_index = c  # 0 = mnist, 1 = fashion, 2 = celeb
         for i,el in enumerate(a):
             opt.save_path = el+'/'
             opt.load_path = opt.save_path+b[i]
