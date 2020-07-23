@@ -13,7 +13,7 @@ def get_dl(indicator,data_list,opt):
     train_set = ImageDatasetFromFile_DIF(indicator, data_list, opt.dataroot, input_height=None,
                                          crop_height=None, output_height=opt.output_height, is_mirror=False,
                                          is_gray=opt.cdim != 3)
-    train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True,
+    train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=False,
                                                     num_workers=opt.workers)
     return train_data_loader
 
@@ -70,10 +70,10 @@ def save_images_individually(images, dir, folder, file_name):
     for i in range(n):
         save_image(images[i, :, :, :], dir + folder + f'/{file_name}_{i}.jpg')
 
-def save_images_group(images, dir, folder, file_name):
+def save_images_group(images, dir, folder, file_name,nrow=8):
     if not os.path.exists(dir+folder):
         os.makedirs(dir+folder)
-    save_image(images, dir + folder + f'/{file_name}.jpg')
+    save_image(images, dir + folder + f'/{file_name}.jpg',nrow)
 
 def get_latents(model,real_images):
     with torch.no_grad():
@@ -103,7 +103,8 @@ class dotdict(dict):
 
 
 def feature_traverse(latent,id,C):
-    trav = [C/10.*i-C for i in range(21)]
+    ints=5
+    trav = [C/ints*i-C for i in range(2*ints+1)]
     l = torch.zeros_like(latent)
     l[id]=1
     container = []
@@ -135,9 +136,9 @@ def feature_isolation(C, z_test, c_test, lasso_model, model,folder_path,alpha):
             a = list_id_x[i][j]
             b = list_id_y[i][j]
             imgs_a = generate_image(model,a)
-            save_images_group(imgs_a,folder_path,f'feature_isolate_A_{alpha}',f'isolate_feature_{i}_pic_{j}')
+            save_images_group(imgs_a,folder_path,f'feature_isolate_A_{alpha}',f'isolate_feature_{i}_pic_{j}',nrow=11)
             imgs_b = generate_image(model,b)
-            save_images_group(imgs_b,folder_path,f'feature_isolate_B_{alpha}',f'isolate_feature_{i}_pic_{j}')
+            save_images_group(imgs_b,folder_path,f'feature_isolate_B_{alpha}',f'isolate_feature_{i}_pic_{j}',nrow=11)
             j+=1
 
 def traverse(z_test, c_test, model,folder_path):
@@ -149,7 +150,7 @@ def traverse(z_test, c_test, model,folder_path):
     for j in range(10):
         trav = [imgs_x[j,:]+dif[j,:]*i*0.1 for i in range(11)]
         imgs = generate_image(model,torch.stack(trav))
-        save_images_group(imgs,folder_path,'feature_trav',f'trav_{j}')
+        save_images_group(imgs,folder_path,'feature_trav',f'trav_{j}',nrow=11)
 
 
 
