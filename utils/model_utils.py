@@ -102,14 +102,14 @@ class dotdict(dict):
     __delattr__ = dict.__delitem__
 
 
-def feature_traverse(latent,id,C):
+def feature_traverse(latent,id,C,sign):
     ints=5
     trav = [C/ints*i-C for i in range(2*ints+1)]
     l = torch.zeros_like(latent)
     l[id]=1
     container = []
-    for z in trav:
-        container.append(z*l+latent)
+    for z in trav: #A-B
+        container.append(latent+z*l*sign)
     return torch.stack(container,dim=0)
 
 
@@ -127,8 +127,9 @@ def feature_isolation(C, z_test, c_test, lasso_model, model,folder_path,alpha):
         list_x = []
         list_y = []
         for j in range(5):
-            list_x.append(feature_traverse(imgs_x[j,:],id,C))
-            list_y.append(feature_traverse(imgs_y[j,:],id,C))
+            sign = torch.sign(w[id])
+            list_x.append(feature_traverse(imgs_x[j,:],id,C,sign))
+            list_y.append(feature_traverse(imgs_y[j,:],id,C,sign))
         list_id_x.append(list_x)
         list_id_y.append(list_y)
     for i in range(5):

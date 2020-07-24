@@ -37,15 +37,15 @@ img_height=[64,256,256]
 hdim_list=[16,512,512]
 
 
-save_paths_faces = ['modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0_linearb=False',
+save_paths_faces = ['modelfacesHQv3_bs=32_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.25_kernel=linear_tanh=True_C=10.0_linearb=False',
                     'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
                     'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True']
-model_paths_faces = ['model_epoch_170_iter_205493.pth','model_epoch_170_iter_154159.pth','model_epoch_170_iter_205496.pth']
+model_paths_faces = ['model_epoch_130_iter_117882.pth','model_epoch_130_iter_117888.pth','model_epoch_130_iter_157146.pth']
 
-save_paths_fashion = ['modelfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
+save_paths_fashion = ['modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.2_kernel=linear_tanh=True_C=10.0_linearb=False',
                       'modelfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
                       'modelfashion_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True']
-model_paths_fashion = ['model_epoch_240_iter_220080.pth','model_epoch_240_iter_165120.pth','model_epoch_240_iter_165120.pth']
+model_paths_fashion = ['model_epoch_100_iter_91700.pth','model_epoch_240_iter_165120.pth','model_epoch_240_iter_165120.pth']
 save_paths_mnist = ['modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
                     'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True',
                     'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False']
@@ -99,6 +99,7 @@ def run_post_process(opt,base_gpu,runs=1):
                 cols.append(f'test_auc_{alp}')
                 val.append(test_auc)
                 feature_isolation(opt.C,test_z,test_c,lasso_model,model,opt.save_path,alp)
+                #Fix direction of A,B to be which depend on the sign of the feature...
         if opt.witness:
             #add load clause
             # try:
@@ -190,7 +191,7 @@ if __name__ == '__main__':
             opt.save_path = el+'/'
             opt.load_path = opt.save_path+b[i]
 
-            run_post_process(opt,base_gpu)
+            run_post_process(opt,base_gpu,runs=3)
 
 
 
