@@ -109,7 +109,7 @@ def feature_traverse(latent,id,C,sign):
     l[id]=1
     container = []
     for z in trav: #A-B
-        container.append(latent+z*l*sign)
+        container.append(latent-z*l*sign)
     return torch.stack(container,dim=0)
 
 
@@ -127,7 +127,7 @@ def feature_isolation(C, z_test, c_test, lasso_model, model,folder_path,alpha):
         list_x = []
         list_y = []
         for j in range(5):
-            sign = torch.sign(w[id])
+            sign = torch.sign(w.squeeze()[id])
             list_x.append(feature_traverse(imgs_x[j,:],id,C,sign))
             list_y.append(feature_traverse(imgs_y[j,:],id,C,sign))
         list_id_x.append(list_x)
