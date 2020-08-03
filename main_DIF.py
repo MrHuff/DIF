@@ -95,6 +95,7 @@ def main():
 
     #-----------------load dataset--------------------------
     train_data = pd.read_csv(opt.class_indicator_file)
+    train_data = train_data.sample(frac=1)
     train_list = train_data['file_name'].values.tolist()[:opt.trainsize]
     property_indicator = train_data['class'].values.tolist()[:opt.trainsize]
     #swap out the train files

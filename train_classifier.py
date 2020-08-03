@@ -19,16 +19,16 @@ opt.C = 10
 opt.tanh_flag = True
 opt.use_flow_model = False
 opt.cuda = True
-save_paths = ['mnist_classify/','fashion_classify/','celeb_classify/']
-channels = [[32, 64, 128, 256],[32, 64, 128, 256, 512, 512],[32, 64, 128, 256, 512, 512]]
+save_paths = ['mnist_classify/','fashion_classify/','celeb_classify/','covid_classify/']
+channels = [[32, 64, 128, 256],[32, 64, 128, 256, 512, 512],[32, 64, 128, 256, 512, 512],[32, 64, 128, 256, 512, 512]]
 opt.workers = 8
-cdims = [1,3,3]
-dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/"]
-class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv"]
-train_sizes = [13000,22000,29000]
-val_sizes = [500,500,500]
-image_size = [64,256,256]
-epochs = [1,10,10]
+cdims = [1,3,3,1]
+dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/","/homes/rhu/data/covid_dataset_256x256/"]
+class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv","/homes/rhu/data/covid_19_sick.csv"]
+train_sizes = [13000,22000,29000,1900]
+val_sizes = [500,500,500,100]
+image_size = [64,256,256,256]
+epochs = [1,10,10,10]
 
 def val_loop(dl,model):
     c_cat = []
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     elif torch.cuda.is_available() and not opt.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     torch.cuda.set_device(base_gpu)
-    for p in range(3):
+    for p in [3]:
         opt.dataset_index = p  # 0 = mnist, 1 = fashion, 2 = celeb
         perf_vals = []
         for seed in range(3):

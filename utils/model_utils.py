@@ -19,6 +19,7 @@ def get_dl(indicator,data_list,opt):
 
 def dataloader_train_val_test(opt):
     data = pd.read_csv(opt.class_indicator_file)
+    data = data.sample(frac=1)
     train_list_1 = data['file_name'].values.tolist()[:opt.trainsize]
     train_property_indicator_1 = data['class'].values.tolist()[:opt.trainsize]
 
@@ -43,6 +44,7 @@ def dataloader_train_val_test(opt):
 
 def dataloader_train_test(opt):
     data = pd.read_csv(opt.class_indicator_file)
+    data = data.sample(frac=1)
     train_list = data['file_name'].values.tolist()[:opt.trainsize]
     train_property_indicator = data['class'].values.tolist()[:opt.trainsize]
 
