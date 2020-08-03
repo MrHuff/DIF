@@ -59,10 +59,12 @@ if __name__ == '__main__':
                     covid_files.append([contents['image']['filename'], contents['image']['url'], 0])
         except Exception as e:
             print(e)
+    manual_remove = ['00006651.jpeg','00006672.jpg','00006679.jpg','00006680.jpg'] #Remove unlabeled CT-scans
 
     df = pd.DataFrame(covid_files,columns=['file_name','url','class'])
-    df[['file_name','class']].to_csv('covid_19_sick.csv',index=0)
+    df[~df['file_name'].isin(manual_remove)][['file_name','class']].to_csv('covid_19_sick.csv',index=0)
     save_path = '../../../covid_dataset/'
+
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
