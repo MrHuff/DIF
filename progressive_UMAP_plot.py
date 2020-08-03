@@ -46,9 +46,10 @@ if __name__ == '__main__':
     elif torch.cuda.is_available() and not opt.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     torch.cuda.set_device(base_gpu)
-    for c,a in zip([1],[save_paths_fashion]):
+    for c,a in zip([0],[save_paths_mnist]):
         opt.dataset_index = c  # 0 = mnist, 1 = fashion, 2 = celeb
         for i, el in enumerate(a):
+            print(el)
             opt.save_path = el+'/'
-            generate_umaps(opt,[0,40,80,120,130,140,150])
+            generate_umaps(opt,[0,6,12,18,24])
 

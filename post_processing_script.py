@@ -8,7 +8,7 @@ from utils.loglikelihood import *
 import GPUtil
 import torch.backends.cudnn as cudnn
 import pandas as pd
-
+import shutil
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
@@ -20,17 +20,17 @@ opt.use_flow_model = False
 opt.cuda = True
 opt.n_witness = 16
 opt.cur_it = 123
-opt.umap=True
-opt.feature_isolation = True
+opt.umap=False
+opt.feature_isolation = False
 opt.witness = True
 opt.FID= True
-opt.log_likelihood=True
+opt.log_likelihood=False
 opt.workers = 4
 opt.C=10
 dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/"]
 class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv"]
 train_sizes = [13000,22000,29000]
-opt.FID_fake = True
+opt.FID_fake = False
 opt.FID_prototypes = True
 cdims = [1,3,3]
 img_height=[64,256,256]
@@ -42,10 +42,16 @@ save_paths_faces = ['modelfacesHQv3_bs=32_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.
                     'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True']
 model_paths_faces = ['model_epoch_130_iter_117882.pth','model_epoch_130_iter_117888.pth','model_epoch_130_iter_157146.pth']
 
-save_paths_fashion = ['modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.6_kernel=linear_tanh=True_C=10.0_linearb=False',
+save_paths_fashion = [
+                    'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.4_kernel=linear_tanh=True_C=10.0_linearb=False',
                       'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
-                      'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True']
-model_paths_fashion = ['model_epoch_140_iter_128380.pth','model_epoch_140_iter_128380.pth','model_epoch_140_iter_128380.pth']
+                      'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True'
+                      ]
+model_paths_fashion = [
+                        'model_epoch_180_iter_165060.pth',
+                       'model_epoch_180_iter_165060.pth',
+                        'model_epoch_180_iter_165060.pth'
+                    ]
 save_paths_mnist = ['modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
                     'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True',
                     'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False']
@@ -126,7 +132,9 @@ def run_post_process(opt,base_gpu,runs=1):
                 lasso_model.eval()
                 preds = lasso_model(witness_obj.T)
                 mask = preds>=0.5
+                shutil.rmtree(opt.save_path+'prototypes_A')
                 save_images_individually(witnesses_tensor[~mask.squeeze(),:,:,:], opt.save_path, 'prototypes_A', 'prototype_A')
+                shutil.rmtree(opt.save_path+'prototypes_B')
                 save_images_individually(witnesses_tensor[mask.squeeze(),:,:,:], opt.save_path, 'prototypes_B', 'prototype_B')
                 save_images_individually(witnesses_tensor, opt.save_path, 'prototypes', 'prototype')
 
@@ -185,7 +193,7 @@ if __name__ == '__main__':
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     torch.cuda.set_device(base_gpu)
 
-    for c,a,b in zip([2,1,0],[save_paths_faces,save_paths_fashion,save_paths_mnist],[model_paths_faces,model_paths_fashion,model_paths_mnist]):
+    for c,a,b in zip([1],[save_paths_fashion],[model_paths_fashion]):
         opt.dataset_index = c  # 0 = mnist, 1 = fashion, 2 = celeb
         for i,el in enumerate(a):
             opt.save_path = el+'/'

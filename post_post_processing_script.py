@@ -2,11 +2,11 @@ import pandas as pd
 from post_processing_script import save_paths_faces,save_paths_fashion,save_paths_mnist
 
 dataset = [save_paths_faces,save_paths_fashion,save_paths_mnist]
-cnn_ref = ['celeb_classify/','fashion_classify/',',mnist_classify/']
+cnn_ref = ['celeb_classify/','fashion_classify/','mnist_classify/']
 if __name__ == '__main__':
     concat = []
     names=[['CelebHQ-DIF','CelebHQ-Vanilla','CelebHQ-linear'],['Fashion-DIF','Fashion-Vanilla','Fashion-linear'],['MNIST-DIF','MNIST-Vanilla','MNIST-linear']]
-    sp = 1
+    sp = 2
     for i,el in enumerate(dataset[sp]):
         ref_df = pd.read_csv(el+'/summary.csv',index_col=0)
         cnn_df = pd.read_csv(cnn_ref[sp] + 'performance_summary.csv',index_col=0)

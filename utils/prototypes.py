@@ -152,8 +152,8 @@ def training_loop_witnesses( #control ls-updates, as we change the RKHS the opti
                             c_test,
                             coeff=1e-5,
                             init_type='randn',
-                            cycles=30,
-                            its = 60,
+                            cycles=50,
+                            its = 36,
                             patience=5):
     X = train_latents[~c_train,:]
     Y = train_latents[c_train,:]
