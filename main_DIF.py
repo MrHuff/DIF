@@ -51,7 +51,7 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
-    param_suffix = f"{opt.prefix}_bs={opt.batchSize}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_linearb={opt.linear_benchmark}"
+    param_suffix = f"{opt.prefix}_bs={opt.batchSize}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_linearb={opt.linear_benchmark}_J={opt.J}"
     opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)
@@ -104,17 +104,19 @@ def main():
     
     train_set = ImageDatasetFromFile_DIF(property_indicator,train_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True,is_gray=opt.cdim!=3)
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
+    min_features = 0
 
-    if opt.linear_benchmark:
-        me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu)
-    else:
-        me_obj = MEstat(J=opt.J,
-                        test_nx=len(train_set.property_indicator)-sum(train_set.property_indicator),
-                        test_ny=sum(train_set.property_indicator),
-                        asymp_n=opt.asymp_n,
-                        kernel_type=opt.kernel).cuda(base_gpu)
+    if opt.lambda_me!=0:
+        if opt.linear_benchmark:
+            me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu)
+        else:
+            me_obj = MEstat(J=opt.J,
+                            test_nx=len(train_set.property_indicator)-sum(train_set.property_indicator),
+                            test_ny=sum(train_set.property_indicator),
+                            asymp_n=opt.asymp_n,
+                            kernel_type=opt.kernel).cuda(base_gpu)
 
-    min_features = 1./opt.J
+            min_features = 1./opt.J
     if opt.tensorboard:
         from tensorboardX import SummaryWriter
         writer = SummaryWriter(log_dir=opt.outf)
@@ -315,7 +317,8 @@ def main():
 
         model.train()
         for iteration, (batch,c) in enumerate(train_data_loader, 0):
-            if c.sum()<=min_features and (~c).sum()<=min_features:
+            if (c.sum()<min_features) or ((~c).sum()<min_features):
+                print('skip')
                 continue
             else:
                 #--------------train------------

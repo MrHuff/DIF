@@ -22,41 +22,61 @@ opt.n_witness = 16
 opt.cur_it = 123
 opt.umap=False
 opt.feature_isolation = False
-opt.witness = True
-opt.FID= True
-opt.log_likelihood=False
+opt.witness = False
+opt.FID= False
+opt.log_likelihood=True
+opt.FID_fake = False
+opt.FID_prototypes = False
 opt.workers = 4
 opt.C=10
-dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/"]
-class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv"]
-train_sizes = [13000,22000,29000]
-opt.FID_fake = False
-opt.FID_prototypes = True
-cdims = [1,3,3]
-img_height=[64,256,256]
-hdim_list=[16,512,512]
+dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/","/homes/rhu/data/covid_dataset_256x256/"]
+class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv","/homes/rhu/data/covid_19_sick.csv"]
+train_sizes = [13000,22000,29000,1900]
+cdims = [1,3,3,1]
+img_height=[64,256,256,256]
+hdim_list=[16,512,512,512]
 
 
-save_paths_faces = ['modelfacesHQv3_bs=32_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.25_kernel=linear_tanh=True_C=10.0_linearb=False',
-                    'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
-                    'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True']
-model_paths_faces = ['model_epoch_130_iter_117882.pth','model_epoch_130_iter_117888.pth','model_epoch_130_iter_157146.pth']
+save_paths_faces = [
+    'modelfacesHQv3_bs=24_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=10.0_kernel=rbf_tanh=True_C=10.0_linearb=True',
+    # 'modelfacesHQv3_bs=32_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.25_kernel=linear_tanh=True_C=10.0_linearb=False',
+    #                 'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
+    #                 'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True'
+]
+model_paths_faces = [
+    'model_epoch_130_iter_157151.pth',
+    # 'model_epoch_130_iter_117882.pth',
+    # 'model_epoch_130_iter_117888.pth',
+    # 'model_epoch_130_iter_157146.pth'
+]
 
 save_paths_fashion = [
                     'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.4_kernel=linear_tanh=True_C=10.0_linearb=False',
-                      'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
-                      'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True'
+                      # 'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
+                      # 'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True'
                       ]
 model_paths_fashion = [
                         'model_epoch_180_iter_165060.pth',
-                       'model_epoch_180_iter_165060.pth',
-                        'model_epoch_180_iter_165060.pth'
+                       # 'model_epoch_180_iter_165060.pth',
+                       #  'model_epoch_180_iter_165060.pth'
                     ]
 save_paths_mnist = ['modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
                     'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True',
                     'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False']
 model_paths_mnist = ['model_epoch_24_iter_9760.pth','model_epoch_24_iter_9761.pth','model_epoch_24_iter_9760.pth']
 
+save_paths_covid = [
+                    # 'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.1_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
+                    # 'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.05_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
+                    'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.15_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
+                    'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True_J=0.0',
+                    'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False_J=0.0',
+                    ]
+model_paths_covid = [
+                    'model_epoch_150_iter_9222.pth',
+                    'model_epoch_150_iter_12000.pth',
+                    'model_epoch_150_iter_12000.pth',
+                     ]
 
 #Prototypes are fucking weird, needs a fix...
 def run_post_process(opt,base_gpu,runs=1):
@@ -132,9 +152,11 @@ def run_post_process(opt,base_gpu,runs=1):
                 lasso_model.eval()
                 preds = lasso_model(witness_obj.T)
                 mask = preds>=0.5
-                shutil.rmtree(opt.save_path+'prototypes_A')
+                if os.path.exists(opt.save_path+'prototypes_A'):
+                    shutil.rmtree(opt.save_path+'prototypes_A')
                 save_images_individually(witnesses_tensor[~mask.squeeze(),:,:,:], opt.save_path, 'prototypes_A', 'prototype_A')
-                shutil.rmtree(opt.save_path+'prototypes_B')
+                if os.path.exists(opt.save_path+'prototypes_B'):
+                    shutil.rmtree(opt.save_path+'prototypes_B')
                 save_images_individually(witnesses_tensor[mask.squeeze(),:,:,:], opt.save_path, 'prototypes_B', 'prototype_B')
                 save_images_individually(witnesses_tensor, opt.save_path, 'prototypes', 'prototype')
 
@@ -146,7 +168,7 @@ def run_post_process(opt,base_gpu,runs=1):
         if opt.FID:
             fake_tensor = get_fake_images(model,32)
             save_images_individually(fake_tensor, opt.save_path, 'fake_images', 'fake')
-            datasets = ['mnist38','fashion','celebHQ']
+            datasets = ['mnist38','fashion','celebHQ','covid']
             for i,d in enumerate(datasets):
                 if not os.path.isfile(f'./precomputed_fid/{d}/data.npy'):
                     if not os.path.exists(f'./precomputed_fid/{d}/'):
@@ -170,7 +192,7 @@ def run_post_process(opt,base_gpu,runs=1):
 
         if opt.log_likelihood:
             cols = cols + ['log-likelihood','ELBO','log-likelihood_A','log-likelihood_B','ELBO_A','ELBO_B']
-            _loglikelihood_estimates,_elbo_estimates,_class = estimate_loglikelihoods(dl_test,model,50)
+            _loglikelihood_estimates,_elbo_estimates,_class = estimate_loglikelihoods(dl_test,model,10)
             print(_loglikelihood_estimates.shape)
             print(_elbo_estimates.shape)
             ll,elbo,ll_A,ll_B,elbo_A,elbo_B=calculate_metrics(_loglikelihood_estimates, _elbo_estimates, _class)
@@ -184,13 +206,14 @@ def run_post_process(opt,base_gpu,runs=1):
 
 if __name__ == '__main__':
     if opt.cuda:
-        base_gpu_list = GPUtil.getAvailable(order='memory', limit=8)
+        base_gpu_list = GPUtil.getAvailable(order='memory', limit=7)
         if 5 in base_gpu_list:
             base_gpu_list.remove(5)
         base_gpu = base_gpu_list[0]
         cudnn.benchmark = True
     elif torch.cuda.is_available() and not opt.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+    # base_gpu = 0
     torch.cuda.set_device(base_gpu)
 
     for c,a,b in zip([1],[save_paths_fashion],[model_paths_fashion]):
@@ -198,7 +221,6 @@ if __name__ == '__main__':
         for i,el in enumerate(a):
             opt.save_path = el+'/'
             opt.load_path = opt.save_path+b[i]
-
             run_post_process(opt,base_gpu,runs=3)
 
 
