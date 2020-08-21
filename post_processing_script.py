@@ -166,7 +166,7 @@ def run_post_process(opt,base_gpu,runs=1):
         if opt.log_likelihood:
             cols = cols + ['log-likelihood','ELBO','log-likelihood_A','log-likelihood_B','ELBO_A','ELBO_B']
             _loglikelihood_estimates,_elbo_estimates,_class = estimate_loglikelihoods(dl_test,model,50)
-            print(_loglikelihood_estimates.shape)
+            print(_loglikelihood_estimates.shape)   
             print(_elbo_estimates.shape)
             ll,elbo,ll_A,ll_B,elbo_A,elbo_B=calculate_metrics(_loglikelihood_estimates, _elbo_estimates, _class)
             val = val + [ll,elbo,ll_A,ll_B,elbo_A,elbo_B]
