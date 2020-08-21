@@ -38,27 +38,25 @@ hdim_list=[16,512,512,512]
 
 
 save_paths_faces = [
-    'modelfacesHQv3_bs=24_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=10.0_kernel=rbf_tanh=True_C=10.0_linearb=True',
-    # 'modelfacesHQv3_bs=32_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.25_kernel=linear_tanh=True_C=10.0_linearb=False',
-    #                 'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
-    #                 'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True'
+    'modelfacesHQv3_bs=32_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.25_kernel=linear_tanh=True_C=10.0_linearb=False',
+                    'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
+                    'modelfacesHQv3_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True'
 ]
 model_paths_faces = [
-    'model_epoch_130_iter_157151.pth',
-    # 'model_epoch_130_iter_117882.pth',
-    # 'model_epoch_130_iter_117888.pth',
-    # 'model_epoch_130_iter_157146.pth'
+    'model_epoch_130_iter_117882.pth',
+    'model_epoch_130_iter_117888.pth',
+    'model_epoch_130_iter_157146.pth'
 ]
 
 save_paths_fashion = [
                     'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.4_kernel=linear_tanh=True_C=10.0_linearb=False',
-                      # 'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
-                      # 'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True'
+                      'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False',
+                      'modelfashion_bs=24_beta=1.0_KL=0.1_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True'
                       ]
 model_paths_fashion = [
                         'model_epoch_180_iter_165060.pth',
-                       # 'model_epoch_180_iter_165060.pth',
-                       #  'model_epoch_180_iter_165060.pth'
+                       'model_epoch_180_iter_165060.pth',
+                        'model_epoch_180_iter_165060.pth'
                     ]
 save_paths_mnist = ['modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_linearb=False',
                     'modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_linearb=True',
@@ -66,8 +64,6 @@ save_paths_mnist = ['modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda
 model_paths_mnist = ['model_epoch_24_iter_9760.pth','model_epoch_24_iter_9761.pth','model_epoch_24_iter_9760.pth']
 
 save_paths_covid = [
-                    # 'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.1_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
-                    # 'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.05_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
                     'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.15_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
                     'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True_J=0.0',
                     'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False_J=0.0',
@@ -78,7 +74,6 @@ model_paths_covid = [
                     'model_epoch_150_iter_12000.pth',
                      ]
 
-#Prototypes are fucking weird, needs a fix...
 def run_post_process(opt,base_gpu,runs=1):
     opt.dataroot = dataroots_list[opt.dataset_index]
     opt.class_indicator_file = class_indicator_files_list[opt.dataset_index]
@@ -105,16 +100,7 @@ def run_post_process(opt,base_gpu,runs=1):
         if opt.feature_isolation:
             alphas = [0,1e-3,1e-2,1e-1,1.]
             for alp in alphas:
-                # try:
-                #     lasso_model = lasso_regression(in_dim=opt.hdim, o_dim=1).cuda()
-                #     lasso_model.load_state_dict(torch.load(opt.save_path+f'lasso_latents_{alp}.pth',map_location=map_location))
-                #     lasso_model.eval()
-                #     with torch.no_grad():
-                #         preds = lasso_model(test_z)
-                #     test_auc = auc_check(preds,test_c)
-                # except Exception as e:
-                #     print(e)
-                #     print("No latent regression model exists, training a new one!")
+
                 lasso_model,test_auc = lasso_train(opt.save_path,train_z,train_c,test_z,test_c,alp,1e-3,100,bs_rate=1e-2)
                 lasso_model.load_state_dict(torch.load(opt.save_path+f'lasso_latents_{alp}.pth',map_location=map_location))
                 lasso_model.eval()
@@ -127,20 +113,7 @@ def run_post_process(opt,base_gpu,runs=1):
                 feature_isolation(opt.C,test_z,test_c,lasso_model,model,opt.save_path,alp)
                 #Fix direction of A,B to be which depend on the sign of the feature...
         if opt.witness:
-            #add load clause
-            # try:
-            #     X = train_z[~train_c, :]
-            #     Y = train_z[train_c, :]
-            #     tr_nx = round(X.shape[0] * 0.9)
-            #     tr_ny = round(Y.shape[0] * 0.9)
-            #     witness_obj = witness_generation(opt.hdim, opt.n_witness,X[:tr_nx,:], Y[:tr_ny,:]).cuda()
-            #     witness_obj.load_state_dict(torch.load(opt.save_path+'witness_object.pth',map_location))
-            #     witness_obj.eval()
-            #     tst_stat_test = witness_obj(test_z[~test_c,:], test_z[test_c,:])
-            #     pval = witness_obj.get_pval_test(-tst_stat_test.item())
-            # except Exception as e:
-            #     print(e)
-            #     print("No witness model exists, training a new one!")
+
             witness_obj, pval = training_loop_witnesses(opt.save_path,opt.hdim, opt.n_witness, train_z, train_c, test_z, test_c,init_type='gaussian_fit')
 
             witnesses_tensor = generate_image(model,witness_obj.T)

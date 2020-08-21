@@ -1,30 +1,37 @@
-# IntroVAE
-A pytorch implementation of Paper ["IntroVAE: Introspective Variational Autoencoders for Photographic Image Synthesis"](http://papers.nips.cc/paper/7291-introvae-introspective-variational-autoencoders-for-photographic-image-synthesis)
+# DIF
+
+This code repository applies DIF to IntroVAE: ["IntroVAE: Introspective Variational Autoencoders for Photographic Image Synthesis"](http://papers.nips.cc/paper/7291-introvae-introspective-variational-autoencoders-for-photographic-image-synthesis)
+
+This code is based on the original implementation of IntroVAE: https://github.com/hhb072/IntroVAE
 
 ## Prerequisites
-* Python 2.7 or Python 3.6
-* PyTorch
+* Python 3.7
+* PyTorch>=1.6 (requires mixed precision training)
 
 ## Run
 
-Use the default parameters except changing the hyper-parameter, i.e., *m_plus*, *weight_rec*, *weight_kl*, and *weight_neg*, for different image resolution settings. Noted that setting *num_vae* nonzero means pretraining the model in the standard VAE manner, which may helps improve the training stablitity and convergency. 
+To train the model and the benchmarks run the lines of code in run_256.sh for each dataset.
 
-The default parameters for CelebA-HQ faces at 256x256 and 1024x1024 resolutions are provided in the file 'run_256.sh' and 'run_1024.sh', respectively. Other settings are allowed as discussed in the appendix of the published paper. 
+Make sure to modify the "dataroot" parameter for image source and "class_indicator_file" for labels.
 
-## Results
+The public datasets can be downloaded by installing ... and calling:
 
-![](https://github.com/hhb072/IntroVAE/blob/master/sample.jpg)
+CelebHQ: 
+Fashion:
+MNIST:
+COVID-19:
 
-## Citation
+These datasets are already preprocessed and can be trained on directly after unzipping them.
 
-If you use our codes, please cite the following paper:
+They contain both "dataroot" images and the "class_indicator" file.
 
- 	@inproceedings{huang2018introvae,
-	  title={IntroVAE: Introspective Variational Autoencoders for Photographic Image Synthesis},
-	  author={Huang, Huaibo and Li, Zhihang and He, Ran and Sun, Zhenan and Tan, Tieniu},
-	  booktitle={Advances in Neural Information Processing Systems},
-	  pages={10236--10245},    
-	  year={2018}
-	}
+To post process and get images and fit a lasso model, run the "post_processing_script.py".
 
-**The released codes are only allowed for non-commercial use.**
+Depending on the name of saved models, some tinkering might be needed. 
+
+"progressive_UMAP_plot.py" generates visualizes the latent space using UMAP in 2-d for different epochs.
+
+"witness_UMAP_plot.py" plots the prototypes in the umap together with latent representations.
+
+"post_post_processing_script.py" outputs every numerical result to latex.
+
