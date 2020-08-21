@@ -4,8 +4,8 @@ from PIL import Image
 
 class_A = [3,4]
 class_B = [8,9]
-raw_data_path_training = '/home/rhu/Downloads/mnist_png/training/'
-raw_data_path_testing = '/home/rhu/Downloads/mnist_png/testing/'
+raw_data_path_training = '/home/anonymous/Downloads/mnist_png/training/'
+raw_data_path_testing = '/home/anonymous/Downloads/mnist_png/testing/'
 
 def move_files(files,path,new_path,class_):
     if not os.path.exists(new_path):
@@ -16,7 +16,7 @@ def move_files(files,path,new_path,class_):
 
 if __name__ == '__main__':
     for a,b in zip(class_A,class_B):
-        data_set_path = f'/home/rhu/Downloads/mnist_{a}_{b}/'
+        data_set_path = f'/home/anonymous/Downloads/mnist_{a}_{b}/'
         train_a = os.listdir(raw_data_path_training+str(a))
         test_a = os.listdir(raw_data_path_testing+str(a))
         train_b = os.listdir(raw_data_path_training+str(b))

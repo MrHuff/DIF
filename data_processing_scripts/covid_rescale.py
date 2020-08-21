@@ -14,10 +14,10 @@ def crop_max_square(pil_img):
 
 if __name__ == '__main__':
     new_sizes = [128,256]
-    path = f'/home/rhu/Documents/covid_dataset/'
+    path = f'/home/anonymous/Documents/covid_dataset/'
     files = os.listdir(path)
     for n in new_sizes:
-        new_path = f'/home/rhu/Documents/covid_dataset_{n}x{n}/'
+        new_path = f'/home/anonymous/Documents/covid_dataset_{n}x{n}/'
         if not os.path.exists(new_path):
             os.makedirs(new_path)
         for f in files:

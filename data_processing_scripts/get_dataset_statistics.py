@@ -1,10 +1,10 @@
 import pandas as pd
 
 csvs = [
-    '/homes/rhu/data/celebA_hq_gender.csv',
-    '/homes/rhu/data/fashion_price_class.csv',
-    '/homes/rhu/data/mnist_3_8.csv',
-    '/homes/rhu/data/covid_19_sick.csv'
+    '/homes/anonymous/data/celebA_hq_gender.csv',
+    '/homes/anonymous/data/fashion_price_class.csv',
+    '/homes/anonymous/data/mnist_3_8.csv',
+    '/homes/anonymous/data/covid_19_sick.csv'
 ]
 
 for f in csvs:

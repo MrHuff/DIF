@@ -2,8 +2,8 @@ import pandas as pd
 import os
 import PIL
 
-mapping_path = '/home/rhu/big_downloads/CelebAMask-HQ/CelebA-HQ-to-CelebA-mapping.txt'
-attribute_path = '/home/rhu/big_downloads/list_attr_celeba.txt'
+mapping_path = '/home/anonymous/big_downloads/CelebAMask-HQ/CelebA-HQ-to-CelebA-mapping.txt'
+attribute_path = '/home/anonymous/big_downloads/list_attr_celeba.txt'
 
 mappings  = pd.read_csv(mapping_path, sep="\s+")
 attributes = pd.read_csv(attribute_path, sep="\s+")
