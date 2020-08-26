@@ -64,7 +64,7 @@ save_paths_mnist = ['modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda
 model_paths_mnist = ['model_epoch_24_iter_9760.pth','model_epoch_24_iter_9761.pth','model_epoch_24_iter_9760.pth']
 
 save_paths_covid = [
-                    'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.15_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
+                    # 'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.15_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
                     'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True_J=0.0',
                     'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False_J=0.0',
                     ]
@@ -165,7 +165,7 @@ def run_post_process(opt,base_gpu,runs=1):
 
         if opt.log_likelihood:
             cols = cols + ['log-likelihood','ELBO','log-likelihood_A','log-likelihood_B','ELBO_A','ELBO_B']
-            _loglikelihood_estimates,_elbo_estimates,_class = estimate_loglikelihoods(dl_test,model,10)
+            _loglikelihood_estimates,_elbo_estimates,_class = estimate_loglikelihoods(dl_test,model,500)
             print(_loglikelihood_estimates.shape)
             print(_elbo_estimates.shape)
             ll,elbo,ll_A,ll_B,elbo_A,elbo_B=calculate_metrics(_loglikelihood_estimates, _elbo_estimates, _class)
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     # base_gpu = 0
     torch.cuda.set_device(base_gpu)
 
-    for c,a,b in zip([1],[save_paths_fashion],[model_paths_fashion]):
+    for c,a,b in zip([0],[save_paths_mnist],[model_paths_mnist]):
         opt.dataset_index = c  # 0 = mnist, 1 = fashion, 2 = celeb
         for i,el in enumerate(a):
             opt.save_path = el+'/'

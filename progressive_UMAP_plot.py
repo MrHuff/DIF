@@ -47,10 +47,10 @@ if __name__ == '__main__':
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     torch.cuda.set_device(base_gpu)
     max_epoch = 180 #Adjust this according to model
-    for c,a in zip([2],[save_paths_faces]):
+    for c,a in zip([3],[save_paths_covid]):
         opt.dataset_index = c  # 0 = mnist, 1 = fashion, 2 = celeb
         for i, el in enumerate(a):
             print(el)
             opt.save_path = el+'/'
-            generate_umaps(opt,[el for el in range(0,max_epoch,10)])
+            generate_umaps(opt,[0,60,120,130,140,150])
 

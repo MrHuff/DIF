@@ -21,20 +21,20 @@ if __name__ == '__main__':
     cols = ['dataset-model']+cols
     cols = [el.replace('_','-') for el in cols]
     new_df = pd.DataFrame(concat,columns=cols)
-    lasso_cols = ['test-auc-0','test-auc-0.001','test-auc-0.01','test-auc-0.1','test-auc-1.0','test auc']
-    lasso_df = new_df[['dataset-model']+lasso_cols]
-    new_df = new_df.drop(lasso_cols,axis=1)
-    lasso_df.columns= ['dataset-model','$\lambda_{\text{lasso}}=0$','$\lambda_{\text{lasso}}=0.001$','$\lambda_{\text{lasso}}=0.01$','$\lambda_{\text{lasso}}=0.1$','$\lambda_{\text{lasso}}=1.0$','CNN']
-    print(lasso_df)
-    print(new_df)
+    # lasso_cols = ['test-auc-0','test-auc-0.001','test-auc-0.01','test-auc-0.1','test-auc-1.0','test auc']
+    # lasso_df = new_df[['dataset-model']+lasso_cols]
+    # new_df = new_df.drop(lasso_cols,axis=1)
+    # lasso_df.columns= ['dataset-model','$\lambda_{\text{lasso}}=0$','$\lambda_{\text{lasso}}=0.001$','$\lambda_{\text{lasso}}=0.01$','$\lambda_{\text{lasso}}=0.1$','$\lambda_{\text{lasso}}=1.0$','CNN']
+    # print(lasso_df)
+    # print(new_df)
 
 
     print(new_df.to_latex(index=False,escape=False))
-    print(lasso_df.to_latex(index=False,escape=False))
-    sub_df = new_df[['dataset-model','fake-FID','prototype-FID','ELBO','log-likelihood']]
-    sub_df_2 = lasso_df.iloc[:,1:]
-    concat_df = pd.concat([sub_df,sub_df_2],axis=1)
-    print(concat_df.to_latex(index=False,escape=False))
+    # print(lasso_df.to_latex(index=False,escape=False))
+    # sub_df = new_df[['dataset-model','fake-FID','prototype-FID','ELBO','log-likelihood']]
+    # sub_df_2 = lasso_df.iloc[:,1:]
+    # concat_df = pd.concat([sub_df,sub_df_2],axis=1)
+    # print(concat_df.to_latex(index=False,escape=False))
 
 
 
