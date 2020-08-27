@@ -14,12 +14,12 @@ To train the model and the benchmarks run the lines of code in run_256.sh for ea
 
 Make sure to modify the "dataroot" parameter for image source and "class_indicator_file" for labels.
 
-The public datasets can be downloaded by installing ... and calling:
+The public datasets can be downloaded by installing "gdown" (i.e. "pip install gdown") and calling:
 
-CelebHQ: 
-Fashion:
-MNIST:
-COVID-19:
+CelebHQ: gdown https://drive.google.com/uc?id=19WmAelyLp8TA8bAnLdS6oPP1b3z7wlaz
+Fashion: gdown https://drive.google.com/uc?id=1Mxn3Jf1uYozgNa1AAXNXHLzaL6tfQpTI
+MNIST: gdown https://drive.google.com/uc?id=12b-PTIKoCOOUNBMq0Y7B3itUtkJ26ebC
+COVID-19: gdown https://drive.google.com/uc?id=1kpjRm-KWWiffaOYbULsKLIYYJPflmaBx
 
 These datasets are already preprocessed and can be trained on directly after unzipping them.
 
