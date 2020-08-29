@@ -6,7 +6,7 @@ cnn_ref = ['celeb_classify/','fashion_classify/','mnist_classify/','covid_classi
 if __name__ == '__main__':
     concat = []
     names=[['CelebHQ-DIF','CelebHQ-Vanilla','CelebHQ-linear'],['Fashion-DIF','Fashion-Vanilla','Fashion-linear'],['MNIST-DIF','MNIST-Vanilla','MNIST-linear'],['Covid-DIF','Covid-Vanilla','Covid-linear']]
-    sp = 3
+    sp = 0
     for i,el in enumerate(dataset[sp]):
         ref_df = pd.read_csv(el+'/summary.csv',index_col=0)
         cnn_df = pd.read_csv(cnn_ref[sp] + 'performance_summary.csv',index_col=0)
@@ -16,7 +16,10 @@ if __name__ == '__main__':
         for c in cols:
             mean = round(df[c]['mean'],3)
             std = round(df[c]['std'],3)
-            new_row.append(str(mean)+'$\pm$'+str(std))
+            if 'sparsity' in c:
+                new_row.append(str(round(mean*100,1))+'\%'+'$\pm$'+str(round(std*100,1  ))+'\%')
+            else:
+                new_row.append(str(mean)+'$\pm$'+str(std))
         concat.append(new_row)
     cols = ['dataset-model']+cols
     cols = [el.replace('_','-') for el in cols]

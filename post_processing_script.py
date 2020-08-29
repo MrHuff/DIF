@@ -21,10 +21,10 @@ opt.cuda = True
 opt.n_witness = 16
 opt.cur_it = 123
 opt.umap=False
-opt.feature_isolation = False
+opt.feature_isolation = True
 opt.witness = False
 opt.FID= False
-opt.log_likelihood=True
+opt.log_likelihood=False
 opt.FID_fake = False
 opt.FID_prototypes = False
 opt.workers = 4
@@ -64,7 +64,7 @@ save_paths_mnist = ['modelmnist38_beta=1.0_KL=1.0_KLneg=0.5_fd=3_m=1000.0_lambda
 model_paths_mnist = ['model_epoch_24_iter_9760.pth','model_epoch_24_iter_9761.pth','model_epoch_24_iter_9760.pth']
 
 save_paths_covid = [
-                    # 'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.15_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
+                    'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.15_kernel=linear_tanh=True_C=10.0_linearb=False_J=0.25',
                     'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=1.0_kernel=rbf_tanh=True_C=10.0_linearb=True_J=0.0',
                     'modelcovid256_bs=24_beta=0.25_KL=1.0_KLneg=0.5_fd=3_m=150.0_lambda_me=0.0_kernel=rbf_tanh=True_C=10.0_linearb=False_J=0.0',
                     ]
@@ -98,13 +98,16 @@ def run_post_process(opt,base_gpu,runs=1):
         val = []
         cols = []
         if opt.feature_isolation:
-            alphas = [0,1e-3,1e-2,1e-1,1.]
+            alphas = [0,1e-3,1e-2,1e-1]
             for alp in alphas:
 
                 lasso_model,test_auc = lasso_train(opt.save_path,train_z,train_c,test_z,test_c,alp,1e-3,100,bs_rate=1e-2)
                 lasso_model.load_state_dict(torch.load(opt.save_path+f'lasso_latents_{alp}.pth',map_location=map_location))
                 lasso_model.eval()
                 weights_histogram(lasso_model,opt.save_path,alp)
+                sparsity_level = get_feature_sparsity(lasso_model)
+                cols.append(f'sparsity_level_{alp}')
+                val.append(sparsity_level)
                 with torch.no_grad():
                     preds = lasso_model(test_z)
                 test_auc = auc_check(preds, test_c)
@@ -189,7 +192,7 @@ if __name__ == '__main__':
     # base_gpu = 0
     torch.cuda.set_device(base_gpu)
 
-    for c,a,b in zip([0],[save_paths_mnist],[model_paths_mnist]):
+    for c,a,b in zip([0,1,2,3],[save_paths_mnist,save_paths_fashion,save_paths_faces,save_paths_covid],[model_paths_mnist,model_paths_fashion,model_paths_faces,model_paths_covid]):
         opt.dataset_index = c  # 0 = mnist, 1 = fashion, 2 = celeb
         for i,el in enumerate(a):
             opt.save_path = el+'/'

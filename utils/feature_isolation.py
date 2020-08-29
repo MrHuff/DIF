@@ -86,15 +86,10 @@ def lasso_train(save_path,data_train,c_train,data_test,c_test,reg_parameter,lr,e
                 break
     return model,test_auc
 
-def get_feature_sparsity(save_path,reg_parameter,d):
-    model = lasso_regression(in_dim=d, o_dim=1)
-    model.load_state_dict(torch.load(save_path + f'lasso_latents_{reg_parameter}.pth'))
+def get_feature_sparsity(model):
     w = model.linear.weight.detach().cpu().numpy()
+    w = np.abs(w)
     largest_feature = np.max(w)
     sparse_threshold = 0.1*largest_feature
-    sparsity_level = (w<sparse_threshold).sum()/w.shape[0]
+    sparsity_level = (w>=sparse_threshold).sum()/w.shape[1]
     return sparsity_level
-
-
-
-
