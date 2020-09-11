@@ -6,7 +6,7 @@ cnn_ref = ['celeb_classify/','fashion_classify/','mnist_classify/','covid_classi
 if __name__ == '__main__':
     concat = []
     names=[['CelebHQ-DIF','CelebHQ-Vanilla','CelebHQ-linear'],['Fashion-DIF','Fashion-Vanilla','Fashion-linear'],['MNIST-DIF','MNIST-Vanilla','MNIST-linear'],['Covid-DIF','Covid-Vanilla','Covid-linear']]
-    sp = 0
+    sp = 3
     for i,el in enumerate(dataset[sp]):
         ref_df = pd.read_csv(el+'/summary.csv',index_col=0)
         cnn_df = pd.read_csv(cnn_ref[sp] + 'performance_summary.csv',index_col=0)
