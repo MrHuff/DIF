@@ -10,16 +10,16 @@ This code is based on the original implementation of IntroVAE: https://github.co
 
 ## Run
 
-To train the model and the benchmarks run the lines of code in run_256.sh for each dataset.
+To train the model and the benchmarks run the lines of code in run_256.sh for each dataset. A RTX2080Ti card or stronger is recommended.
 
 Make sure to modify the "dataroot" parameter for image source and "class_indicator_file" for labels.
 
 The public datasets can be downloaded by installing "gdown" (i.e. "pip install gdown") and calling:
 
-CelebHQ: gdown https://drive.google.com/uc?id=19WmAelyLp8TA8bAnLdS6oPP1b3z7wlaz
-Fashion: gdown https://drive.google.com/uc?id=1Mxn3Jf1uYozgNa1AAXNXHLzaL6tfQpTI
-MNIST: gdown https://drive.google.com/uc?id=12b-PTIKoCOOUNBMq0Y7B3itUtkJ26ebC
-COVID-19: gdown https://drive.google.com/uc?id=1kpjRm-KWWiffaOYbULsKLIYYJPflmaBx
+CelebHQ: gdown https://drive.google.com/uc?id=19WmAelyLp8TA8bAnLdS6oPP1b3z7wlaz \
+Fashion: gdown https://drive.google.com/uc?id=1Mxn3Jf1uYozgNa1AAXNXHLzaL6tfQpTI \
+MNIST: gdown https://drive.google.com/uc?id=12b-PTIKoCOOUNBMq0Y7B3itUtkJ26ebC \
+COVID-19: gdown https://drive.google.com/uc?id=1kpjRm-KWWiffaOYbULsKLIYYJPflmaBx 
 
 These datasets are already preprocessed and can be trained on directly after unzipping them.
 
@@ -29,7 +29,7 @@ To post process and get images and fit a lasso model, run the "post_processing_s
 
 Depending on the name of saved models, some tinkering might be needed. 
 
-"progressive_UMAP_plot.py" generates visualizes the latent space using UMAP in 2-d for different epochs.
+"progressive_UMAP_plot.py" visualizes the latent space using UMAP in 2-d for different epochs.
 
 "witness_UMAP_plot.py" plots the prototypes in the umap together with latent representations.
 
