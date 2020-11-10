@@ -182,14 +182,14 @@ def run_post_process(opt,base_gpu,runs=1):
 
 if __name__ == '__main__':
     if opt.cuda:
-        base_gpu_list = GPUtil.getAvailable(order='memory', limit=7)
-        if 5 in base_gpu_list:
-            base_gpu_list.remove(5)
+        base_gpu_list = GPUtil.getAvailable(order='memory', limit=8)
         base_gpu = base_gpu_list[0]
         cudnn.benchmark = True
     elif torch.cuda.is_available() and not opt.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-    # base_gpu = 0
+        base_gpu = "cpu"
+    else:
+        base_gpu = "cpu"
     torch.cuda.set_device(base_gpu)
 
     for c,a,b in zip([0,1,2,3],[save_paths_mnist,save_paths_fashion,save_paths_faces,save_paths_covid],[model_paths_mnist,model_paths_fashion,model_paths_faces,model_paths_covid]):
