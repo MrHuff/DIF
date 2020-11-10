@@ -182,9 +182,7 @@ def run_post_process(opt,base_gpu,runs=1):
 
 if __name__ == '__main__':
     if opt.cuda:
-        base_gpu_list = GPUtil.getAvailable(order='memory', limit=7)
-        if 5 in base_gpu_list:
-            base_gpu_list.remove(5)
+        base_gpu_list = GPUtil.getAvailable(order='memory', limit=8)
         base_gpu = base_gpu_list[0]
         cudnn.benchmark = True
     elif torch.cuda.is_available() and not opt.cuda:
