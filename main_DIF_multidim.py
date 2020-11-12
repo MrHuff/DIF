@@ -32,19 +32,6 @@ parser.add_argument("--prefix", default="", type=str, help="dataset")
 parser.add_argument('--linear_benchmark', action='store_true', help='linear bench')
 parser.add_argument('--cdim', type=int, default=3, help='cdim')
 
-#TODO: figure out flow objective! Parallelize!
-#Choosing margin value is really hard...
-#2 ways forward, hyperparameter selection or better flows, latter is more feasible. Hard to get a sense of good hyperparameters
-# Figure out reasonable architecture.
-# Different parametrization strategies.. either neutralize flow or let it become part of each component
-# Try not having a flow, seems to be complicating training...
-#Compare loglikelihood to ELBO, loglikelihood comparison (quality of the inference models) loglikelihood approx elbo = GOOD else BAD. FID.
-# Decision bounday is, if inference i.e. loglikelihood is close to ELBO then no CIF needed, possibly CIF needed.
-def subset_latents(data,c):
-    y_class = data[c,:]
-    x_class = data[~c,:]
-    return x_class.cpu().numpy(),y_class.cpu().numpy()
-
 def main():
     print(torch.__version__)
     # torch.autograd.set_detect_anomaly(True)
@@ -86,8 +73,6 @@ def main():
         load_model(model, opt.pretrained,map_location=base_gpu)
     print(model)
             
-    # optimizerE = optim.Adam(chain(model.encoder.parameters(),model.flow.parameters()), lr=opt.lr_e)
-    # optimizerG = optim.Adam(model.decoder.parameters(), lr=opt.lr_g)
     optimizerE = optim.Adam(model.encoder.parameters(), lr=opt.lr_e)
     optimizerG = optim.Adam(model.decoder.parameters(), lr=opt.lr_g)
     if opt.fp_16:
@@ -95,15 +80,15 @@ def main():
 
     #-----------------load dataset--------------------------
     train_data = pd.read_csv(opt.class_indicator_file)
-    indicators = train_data.columns.tolist() -['file_name']
-    train_data = train_data.sample(frac=1)
+    train_data = train_data.sample(frac=1)#Shuffle your data!
     train_list = train_data['file_name'].values.tolist()[:opt.trainsize]
-    property_indicator = train_data[indicators].values.tolist()[:opt.trainsize]
+    property_indicator = train_data['class'].values.tolist()[:opt.trainsize]
     #swap out the train files
 
     assert len(train_list) > 0
     
-    train_set = ImageDatasetFromFile_DIF(property_indicator,train_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True,is_gray=opt.cdim!=3)
+    train_set = ImageDatasetFromFile_DIF_multi(property_indicator,train_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True,is_gray=opt.cdim!=3)
+    nr_of_classes,label_counts = train_set.get_label_data()
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
     min_features = 0
 
@@ -112,8 +97,8 @@ def main():
             me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu)
         else:
             me_obj = MEstat(J=opt.J,
-                            test_nx=len(train_set.property_indicator)-sum(train_set.property_indicator),
-                            test_ny=sum(train_set.property_indicator),
+                            test_nx=sum(label_counts)/len(label_counts),
+                            test_ny=sum(label_counts)/len(label_counts),
                             asymp_n=opt.asymp_n,
                             kernel_type=opt.kernel).cuda(base_gpu)
 
@@ -123,9 +108,7 @@ def main():
         writer = SummaryWriter(log_dir=opt.outf)
     
     start_time = time.time()
-            
     cur_iter = 0
-    
     def train_vae(epoch, iteration, batch,c,cur_iter):
         if len(batch.size()) == 3:
             batch = batch.unsqueeze(0)
@@ -146,7 +129,11 @@ def main():
             if opt.lambda_me==0:
                 T = torch.zeros_like(loss_rec)
             else:
-                T = me_obj(z_real, c)*opt.lambda_me
+                T = 0
+                for feature_class in unique_labels:
+                    mask = c[:,feature_class]
+                    T += me_obj(z_real, mask)
+                T = T/nr_of_classes*opt.lambda_me
             loss = loss_rec + loss_kl - T
             return loss,loss_rec,loss_kl,rec,T
 
@@ -212,7 +199,11 @@ def main():
             if opt.lambda_me==0:
                 T = torch.zeros_like(loss_rec)
             else:
-                T = me_obj(z, c)*opt.lambda_me
+                T = 0
+                for feature_class in unique_labels:
+                    mask = c[:,feature_class]
+                    T += me_obj(z, mask)
+                T = T / nr_of_classes * opt.lambda_me
             # Also, ok might want to add more parametrization of hyper parameters.
             #weight neg should control adversarial objective. Want fakes and (reconstructions?!) to deviate from prior, want reals to be close to prior.
             #Don't know why reconstructions should be adversarial... Might want to rebalance
@@ -237,28 +228,8 @@ def main():
             optimizerE.zero_grad()
             lossE.backward(retain_graph=True)
 
-        # def flow_separate_backward():
-        #     # z_real = model.flow_forward_only(xi_real.detach(),real_logvar.detach())
-        #     # z_recon = model.flow_forward_only(xi_recon.detach(),rec_logvar.detach())
-        #     T_real = me_obj(xi_real,c)
-        #     # T_recon = me_obj(z_recon,c)
-        #     return T_real#+T_recon
-        # if opt.fp_16:
-        #     with autocast():
-        #         T_loss = -opt.lambda_me*flow_separate_backward()
-        #     scaler.scale(T_loss).backward()
-        # else:
-        #     T_loss = -opt.lambda_me*flow_separate_backward()
-        #     T_loss.backward()
-
-        #Backprop everything on everything... NOT! Make sure the FLOW trains only one ONE of the saddlepoint objectives!
-        # nn.utils.clip_grad_norm(model.encoder.parameters(), 1.0)
-
         for m in model.encoder.parameters():
             m.requires_grad=False
-        # for m in model.flow.parameters(): #Controls whether which objectives apply to flow
-        #     m.requires_grad=False
-
         #========= Update G ==================
         def update_G():
             # rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)

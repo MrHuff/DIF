@@ -28,7 +28,7 @@ def adversarial_experiment(opt,model,dl_test):
         batch_class_target, c  = next(iterator)
     batch_class_target = batch_class_target.to(base_gpu)
     loss = torch.nn.MSELoss()
-    lambas = [0]
+    lambas = [1.0,0.1,1e-2,5*1e-3,1e-3]
     for lamb in lambas:
         d_img = torch.randn_like(batch_class_source, requires_grad=True)
         optimizer = torch.optim.Adam([d_img], lr=1e-2)
@@ -64,7 +64,8 @@ if __name__ == '__main__':
     print(base_gpu)
     # zip([0, 1, 2, 3], [save_paths_mnist, save_paths_fashion, save_paths_faces, save_paths_covid],
     #     [model_paths_mnist, model_paths_fashion, model_paths_faces, model_paths_covid]):
-    for c,a,b in zip([2],[save_paths_faces],[model_paths_faces]):
+    for c,a,b in zip([0, 1, 2, 3], [save_paths_mnist, save_paths_fashion, save_paths_faces, save_paths_covid],
+        [model_paths_mnist, model_paths_fashion, model_paths_faces, model_paths_covid]):
         opt.dataset_index = c  # 0 = mnist, 1 = fashion, 2 = celeb
         for i,el in enumerate(a):
             opt.save_path = el+'/'
