@@ -100,7 +100,6 @@ class DIF_netv2(IntroVAEv2):
                      hdim=512,
                      channels=[64, 128, 256, 512, 512, 512],
                      image_size=256,
-                 flow_depth = 3,
                  flow_C=100,
                  tanh_flag=True):
         super(DIF_netv2, self).__init__(cdim=cdim, hdim=hdim, channels=channels, image_size=image_size)

@@ -20,17 +20,17 @@ from main import parser,record_image,record_scalar,str_to_list,load_model,save_c
 parser.add_argument('--class_indicator_file', default="/home/file.csv", type=str, help='class indicator csv file')
 parser.add_argument('--fp_16', action='store_true', help='enables fp_16')
 parser.add_argument('--tanh_flag', action='store_true', help='enables tanh')
-parser.add_argument('--flow_depth', type=int, default=3, help='flow depth')
 parser.add_argument("--C", type=float, default=100.0, help="Default=100.0")
 parser.add_argument("--J", type=float, default=0.25, help="Default=0.25")
-parser.add_argument("--asymp_n", type=float, default=-1, help="Default=0.25")
 parser.add_argument("--kernel", default="rbf", type=str, help="kernel choice")
 parser.add_argument("--lambda_me", type=float, default=1.0, help="Default=0.25")
 parser.add_argument('--umap', action='store_true', help='visualizes umap')
 parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
 parser.add_argument("--prefix", default="", type=str, help="dataset")
-parser.add_argument('--linear_benchmark', action='store_true', help='linear bench')
+parser.add_argument('--separation_objective',type=int,default=1, help='linear bench')
 parser.add_argument('--cdim', type=int, default=3, help='cdim')
+parser.add_argument('--apply_mask', action='store_true', help='isolate features to specific dimensions')
+parser.add_argument('--mask_KL', type=float, default=1.0, help="KL_mask")
 
 def main():
     print(torch.__version__)
@@ -38,7 +38,7 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
-    param_suffix = f"{opt.prefix}_bs={opt.batchSize}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_fd={opt.flow_depth}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_linearb={opt.linear_benchmark}_J={opt.J}"
+    param_suffix = f"{opt.prefix}_bs={opt.batchSize}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_obj={opt.separation_objective}_J={opt.J}_mask={opt.apply_mask}_mask_KL={opt.mask_KL}"
     opt.outf = f'results{param_suffix}/'
     try:
         os.makedirs(opt.outf)
@@ -62,7 +62,6 @@ def main():
 
     #--------------build models -------------------------
     model = DIF_netv2(flow_C=opt.C,
-                    flow_depth=opt.flow_depth,
                     tanh_flag=opt.tanh_flag,
                     cdim=opt.cdim,
                     hdim=opt.hdim,
@@ -83,33 +82,37 @@ def main():
     train_data = train_data.sample(frac=1)#Shuffle your data!
     train_list = train_data['file_name'].values.tolist()[:opt.trainsize]
     property_indicator = train_data['class'].values.tolist()[:opt.trainsize]
-    #swap out the train files
 
     assert len(train_list) > 0
     
     train_set = ImageDatasetFromFile_DIF_multi(property_indicator,train_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True,is_gray=opt.cdim!=3)
     nr_of_classes,label_counts = train_set.get_label_data()
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
-    min_features = 0
+
+    if opt.apply_mask:
+        mask = torch.Tensor([True]*nr_of_classes + [False]*(opt.hdim-nr_of_classes)).cuda(base_gpu)
+    else:
+        mask=None
 
     if opt.lambda_me!=0:
-        if opt.linear_benchmark:
+        if opt.separation_objective==2:
             me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu)
-        else:
-            me_obj = MEstat(J=opt.J,
-                            test_nx=sum(label_counts)/len(label_counts),
-                            test_ny=sum(label_counts)/len(label_counts),
-                            asymp_n=opt.asymp_n,
-                            kernel_type=opt.kernel).cuda(base_gpu)
+        elif opt.separation_objective==1:
+            me_obj = NFSIC(J=opt.J,kernel_type=opt.kernel).cuda(base_gpu)
 
-            min_features = 1./opt.J
     if opt.tensorboard:
         from tensorboardX import SummaryWriter
         writer = SummaryWriter(log_dir=opt.outf)
     
     start_time = time.time()
     cur_iter = 0
-    def train_vae(epoch, iteration, batch,c,cur_iter):
+
+    def mask_KL(mean,logvar):
+        loss_kl = opt.mask_KL * model.kl_loss(mean[:, mask], logvar[:,mask]).mean() + model.kl_loss(
+            mean[:, ~mask], logvar[:, ~mask]).mean()
+        return loss_kl.mean()
+
+    def train_vae(epoch, iteration, batch,Y,cur_iter):
         if len(batch.size()) == 3:
             batch = batch.unsqueeze(0)
 
@@ -125,15 +128,19 @@ def main():
             # real_mu, real_logvar, z_real, rec, flow_log_det_real, xi_real = model(real)
             real_mu, real_logvar, z_real, rec = model(real)
             loss_rec = model.reconstruction_loss(rec, real, True)
-            loss_kl = model.kl_loss(real_mu, real_logvar).mean() #- flow_log_det_real.mean()
+            if opt.apply_mask:
+                loss_kl = mask_KL(mean=real_mu,logvar=real_logvar)
+            else:
+                loss_kl = model.kl_loss(real_mu, real_logvar).mean() #- flow_log_det_real.mean()
+
             if opt.lambda_me==0:
                 T = torch.zeros_like(loss_rec)
             else:
-                T = 0
-                for feature_class in unique_labels:
-                    mask = c[:,feature_class]
-                    T += me_obj(z_real, mask)
-                T = T/nr_of_classes*opt.lambda_me
+                if opt.apply_mask:
+                    T = me_obj(z_real[:,mask],Y)*opt.lambda_me
+                else:
+                    T = me_obj(z_real,Y)*opt.lambda_me
+
             loss = loss_rec + loss_kl - T
             return loss,loss_rec,loss_kl,rec,T
 
@@ -163,12 +170,12 @@ def main():
             else:
                 vutils.save_image(torch.cat([real, rec], dim=0).data.cpu(), '{}/vae_image_{}.jpg'.format(opt.outf, cur_iter),nrow=opt.nrow)
     
-    def train(epoch, iteration, batch,c, cur_iter):
+    def train(epoch, iteration, batch,Y, cur_iter):
         if len(batch.size()) == 3:
             batch = batch.unsqueeze(0)
             
         batch_size = batch.size(0)
-        c = c.cuda(base_gpu)
+        Y = Y.cuda(base_gpu)
         noise = torch.randn(batch_size, opt.hdim).cuda(base_gpu)
         # noise_logvar = torch.zeros_like(noise)
         real= batch.cuda(base_gpu)
@@ -181,29 +188,29 @@ def main():
 
         def update_E():
 
-            # fake = model.sample(noise,noise_logvar)
             fake = model.sample(noise)
-            # real_mu, real_logvar, z_real, rec,flow_log_det_real,xi_real = model(real)
             real_mu, real_logvar, z, rec = model(real)
-            # rec_mu, rec_logvar,z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec.detach())
-            # fake_mu, fake_logvar,z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake.detach())
             rec_mu, rec_logvar = model.encode(rec.detach())
             fake_mu, fake_logvar = model.encode(fake.detach())
             loss_rec =  model.reconstruction_loss(rec, real, True)
 
-            lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()#-flow_log_det_real.mean()
-            lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()#-flow_log_det_recon.mean()
-            lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()#-flow_log_det_fake.mean()
+            if opt.apply_mask:
+                lossE_real_kl =mask_KL(mean=real_mu,logvar=real_logvar)
+                lossE_rec_kl = mask_KL(mean=rec_mu,logvar=rec_logvar)
+                lossE_fake_kl = mask_KL(mean=fake_mu,logvar=fake_logvar)
+            else:
+                lossE_real_kl = model.kl_loss(real_mu, real_logvar).mean()
+                lossE_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()
+                lossE_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()
+
             loss_margin = lossE_real_kl +(torch.relu(opt.m_plus-lossE_rec_kl)+torch.relu(opt.m_plus-lossE_fake_kl)) * 0.5 * opt.weight_neg
-            #  + \
             if opt.lambda_me==0:
                 T = torch.zeros_like(loss_rec)
             else:
-                T = 0
-                for feature_class in unique_labels:
-                    mask = c[:,feature_class]
-                    T += me_obj(z, mask)
-                T = T / nr_of_classes * opt.lambda_me
+                if opt.apply_mask:
+                    T = me_obj(z[:,mask],Y)*opt.lambda_me
+                else:
+                    T = me_obj(z,Y)*opt.lambda_me
             # Also, ok might want to add more parametrization of hyper parameters.
             #weight neg should control adversarial objective. Want fakes and (reconstructions?!) to deviate from prior, want reals to be close to prior.
             #Don't know why reconstructions should be adversarial... Might want to rebalance
@@ -232,12 +239,14 @@ def main():
             m.requires_grad=False
         #========= Update G ==================
         def update_G():
-            # rec_mu, rec_logvar, z_recon, flow_log_det_recon,xi_recon = model.encode_and_flow(rec)
-            # fake_mu, fake_logvar, z_fake, flow_log_det_fake,xi_fake = model.encode_and_flow(fake)
             rec_mu, rec_logvar = model.encode(rec)
             fake_mu, fake_logvar = model.encode(fake)
-            lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean() #- flow_log_det_recon.mean()
-            lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean() #- flow_log_det_fake.mean()
+            if opt.apply_mask:
+                lossG_rec_kl = mask_KL(rec_mu, rec_logvar)
+                lossG_fake_kl = mask_KL(fake_mu, fake_logvar)
+            else:
+                lossG_rec_kl = model.kl_loss(rec_mu, rec_logvar).mean()
+                lossG_fake_kl = model.kl_loss(fake_mu, fake_logvar).mean()
             lossG = (lossG_rec_kl + lossG_fake_kl) * 0.5 * opt.weight_kl
             return lossG,lossG_rec_kl,lossG_fake_kl
 
@@ -245,22 +254,16 @@ def main():
             with autocast():
                 lossG,lossG_rec_kl,lossG_fake_kl = update_G()
             scaler.scale(lossG).backward()
-            # nn.utils.clip_grad_norm(model.decoder.parameters(), 1.0)
             scaler.step(optimizerE)  # .step()
             scaler.step(optimizerG)  # .step()
             scaler.update()
         else:
             lossG,lossG_rec_kl,lossG_fake_kl = update_G()
             lossG.backward()
-            # nn.utils.clip_grad_norm(model.decoder.parameters(), 1.0)
             optimizerE.step()
             optimizerG.step()
         for m in model.encoder.parameters():
             m.requires_grad = True
-        # for m in model.flow.parameters(): #Controls whether which objectives apply to flow
-        #     m.requires_grad=True
-        #Write down setups, carefully consider gradient updates to avoid positive feedback loop!
-
         #. The key is to hold the regularization term LREG in Eq. (11) and Eq. (12) below the margin value m for most of the time
         info += 'Rec: {:.4f}, '.format(loss_rec.item()*opt.weight_rec)
         info += 'Margin loss: {:.4f}, '.format(opt.weight_kl*loss_margin.item())
@@ -288,18 +291,14 @@ def main():
             save_checkpoint(model, epoch, cur_iter, '', folder_name=f"model{param_suffix}")
 
         model.train()
-        for iteration, (batch,c) in enumerate(train_data_loader, 0):
-            if (c.sum()<min_features) or ((~c).sum()<min_features):
-                print('skip')
-                continue
+        for iteration, (batch,Y) in enumerate(train_data_loader, 0):
+            #--------------train------------
+            if epoch < opt.num_vae:
+                train_vae(epoch, iteration, batch,Y, cur_iter)
             else:
-                #--------------train------------
-                if epoch < opt.num_vae:
-                    train_vae(epoch, iteration, batch,c, cur_iter)
-                else:
-                    train(epoch, iteration, batch,c, cur_iter)
+                train(epoch, iteration, batch,Y, cur_iter)
 
-                cur_iter += 1
+            cur_iter += 1
 
 
 

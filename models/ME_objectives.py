@@ -40,8 +40,78 @@ class linear_benchmark(nn.Module):
         pred = (data@self.w).squeeze()
         return -self.objective(pred,target)
 
-class MEstat(nn.Module):
+class NFSIC(nn.Module):
+    def __init__(self,J,ls=10,eps=1e-5,kernel_type = 'rbf',linear_var=1e-3):
+        super(NFSIC, self).__init__()
+        self.ratio = J
+        self.kernel_type = kernel_type
+        if kernel_type == 'rbf':
+            self.kernel_X = RBFKernel()
+            self.kernel_X.raw_lengthscale = nn.Parameter(torch.tensor([ls]).float(), requires_grad=False)
+            self.kernel_Y = RBFKernel()
+            self.kernel_Y.raw_lengthscale = nn.Parameter(torch.tensor([ls]).float(), requires_grad=False)
+        elif kernel_type == 'linear':
+            self.kernel_X = LinearKernel()
+            self.kernel_X._set_variance(linear_var)
+            self.kernel_Y = LinearKernel()
+            self.kernel_Y._set_variance(linear_var)
+        elif kernel_type == 'matern':
+            self.kernel_X = MaternKernel(nu=2.5)
+            self.kernel_X.raw_lengthscale = nn.Parameter(torch.tensor([ls]).float(), requires_grad=False)
+            self.kernel_Y = MaternKernel(nu=2.5)
+            self.kernel_Y.raw_lengthscale = nn.Parameter(torch.tensor([ls]).float(), requires_grad=False)
+        self.coeff =eps
 
+    def get_median_ls(self,X):
+        with torch.no_grad():
+            d = self.kernel_base.covar_dist(X,X)
+            return torch.sqrt(torch.median(d[d > 0]))
+
+    def get_sample_witness(self,X,Y):
+        n = X.shape[0]
+        idx = torch.randperm(n)
+        J = round(n*self.ratio)
+        T_x, T_y = X[idx[:J], :].detach(), Y[idx[:J], :].detach()
+        X,Y = X[idx[J:], :], Y[idx[J:], :]
+        return T_x,T_y,X,Y
+
+    def calc_ub(self,k_x_sum,k_y_sum,prod,n):
+        u_b = 1/n * prod.sum(dim=1)-1/n**2 * k_x_sum*k_y_sum
+        return u_b
+
+    def calc_gamma(self,n,k_x,k_x_sum,k_y,k_y_sum,u_b):
+        gamma = (k_x-1/n * k_x_sum.expand(1,n))*(k_y-1/n * k_y_sum.expand(1,n))-u_b.expand(1,n)
+        return gamma
+
+    def calc_u(self,k_x_sum,k_y_sum,prod,n):
+        u = prod.sum(dim=1)/(n-1)- k_x_sum*k_y_sum/(n*(n-1))
+        return u
+
+    def forward(self,X,Y):
+        tmp_dev = X.device
+        T_x,T_y,X,Y = self.get_sample_witness(X,Y)
+        n  = X.shape[0]
+        n_cov = T_x.shape[0]
+        if not self.kernel_type=='linear':
+            with torch.no_grad():
+                sig_X = self.get_median_ls(X)
+                self.kernel_X.raw_lengthscale = nn.Parameter(sig_X.unsqueeze(-1).to(tmp_dev),requires_grad=False)  # Use old setup?!??!?!?!
+                sig_Y = self.get_median_ls(Y)
+                self.kernel_Y.raw_lengthscale = nn.Parameter(sig_Y.unsqueeze(-1).to(tmp_dev),requires_grad=False)  # Use old setup?!??!?!?!
+        k_x = self.kernel_X(T_x,X).evaluate()
+        k_y = self.kernel_Y(T_y,Y).evaluate()
+        prod = k_x*k_y
+        k_x_sum = k_x.sum(dim=1)
+        k_y_sum = k_y.sum(dim=1)
+        u_b = self.calc_ub(k_x_sum=k_x_sum,k_y_sum=k_y_sum,prod=prod,n=n)
+        gamma = self.calc_gamma(n=n,k_x=k_x,k_x_sum=k_x_sum,k_y=k_y,k_y_sum=k_y_sum,u_b=u_b)
+        u = self.calc_u(k_x_sum=k_x_sum,k_y_sum=k_y_sum,prod=prod,n=n)
+        sigma = gamma@gamma.t()/n
+        inv_u,_ = torch.solve(u,sigma.float() + self.coeff*torch.eye(n_cov).float().to(sigma.device))
+        lambda_n = torch.sum(u * inv_u) * n
+        return lambda_n
+
+class MEstat(nn.Module):
     def __init__(self,J,ls=10,test_nx=1,test_ny=1,asymp_n=-1,kernel_type = 'rbf',linear_var=1e-3):
         super(MEstat, self).__init__()
         print(ls)
