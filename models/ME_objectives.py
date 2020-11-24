@@ -76,11 +76,11 @@ class NFSIC(nn.Module):
         return T_x,T_y,X,Y
 
     def calc_ub(self,k_x_sum,k_y_sum,prod,n):
-        u_b = 1/n * prod.sum(dim=1)-1/n**2 * k_x_sum*k_y_sum
+        u_b = 1/n * prod.sum(dim=1,keepdim=True)-1/n**2 * k_x_sum*k_y_sum
         return u_b
 
     def calc_gamma(self,n,k_x,k_x_sum,k_y,k_y_sum,u_b):
-        gamma = (k_x-1/n * k_x_sum.expand(1,n))*(k_y-1/n * k_y_sum.expand(1,n))-u_b.expand(1,n)
+        gamma = (k_x-1/n * k_x_sum.expand(-1,n))*(k_y-1/n * k_y_sum.expand(-1,n))-u_b.expand(-1,n)
         return gamma
 
     def calc_u(self,k_x_sum,k_y_sum,prod,n):
@@ -101,14 +101,19 @@ class NFSIC(nn.Module):
         k_x = self.kernel_X(T_x,X).evaluate()
         k_y = self.kernel_Y(T_y,Y).evaluate()
         prod = k_x*k_y
-        k_x_sum = k_x.sum(dim=1)
-        k_y_sum = k_y.sum(dim=1)
+        k_x_sum = k_x.sum(dim=1,keepdim=True)
+        k_y_sum = k_y.sum(dim=1,keepdim=True)
         u_b = self.calc_ub(k_x_sum=k_x_sum,k_y_sum=k_y_sum,prod=prod,n=n)
         gamma = self.calc_gamma(n=n,k_x=k_x,k_x_sum=k_x_sum,k_y=k_y,k_y_sum=k_y_sum,u_b=u_b)
         u = self.calc_u(k_x_sum=k_x_sum,k_y_sum=k_y_sum,prod=prod,n=n)
         sigma = gamma@gamma.t()/n
         inv_u,_ = torch.solve(u,sigma.float() + self.coeff*torch.eye(n_cov).float().to(sigma.device))
         lambda_n = torch.sum(u * inv_u) * n
+        # print(sigma.shape)
+        # print(gamma.shape)
+        # print(u_b.shape)
+        # print(inv_u.shape)
+        # print(lambda_n)
         return lambda_n
 
 class MEstat(nn.Module):

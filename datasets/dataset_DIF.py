@@ -39,7 +39,7 @@ class ImageDatasetFromFile_DIF_multi(ImageDatasetFromFile):
                          self.input_height, self.input_width, self.output_height, self.output_width,
                          self.crop_height, self.crop_width, self.is_random_crop, self.is_mirror, self.is_gray)
         img = self.input_transform(img)
-        label = bool(self.property_indicator[index,:])
+        label = self.property_indicator[index]
 
         return img, label
 
@@ -47,7 +47,8 @@ class ImageDatasetFromFile_DIF_multi(ImageDatasetFromFile):
         return len(self.image_filenames)
 
     def get_label_data(self):
-        return self.property_indicator.shape[1],self.property_indicator.sum(0)
+        tmp = torch.Tensor(self.property_indicator)
+        return tmp.shape[1],tmp.sum(0)
 
 class only_Rescale(object):
     def __init__(self, output_size):

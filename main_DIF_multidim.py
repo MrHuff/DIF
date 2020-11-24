@@ -81,7 +81,9 @@ def main():
     train_data = pd.read_csv(opt.class_indicator_file)
     train_data = train_data.sample(frac=1)#Shuffle your data!
     train_list = train_data['file_name'].values.tolist()[:opt.trainsize]
-    property_indicator = train_data['class'].values.tolist()[:opt.trainsize]
+    cols = train_data.columns.tolist()
+    cols.remove('file_name')
+    property_indicator = train_data[cols].values.tolist()[:opt.trainsize]
 
     assert len(train_list) > 0
     
@@ -90,14 +92,14 @@ def main():
     train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
 
     if opt.apply_mask:
-        mask = torch.Tensor([True]*nr_of_classes + [False]*(opt.hdim-nr_of_classes)).cuda(base_gpu)
+        mask = torch.Tensor([True]*nr_of_classes + [False]*(opt.hdim-nr_of_classes)).bool().cuda(base_gpu)
     else:
         mask=None
 
     if opt.lambda_me!=0:
-        if opt.separation_objective==2:
+        if opt.separation_objective==1:
             me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu)
-        elif opt.separation_objective==1:
+        elif opt.separation_objective==2:
             me_obj = NFSIC(J=opt.J,kernel_type=opt.kernel).cuda(base_gpu)
 
     if opt.tensorboard:
@@ -115,8 +117,7 @@ def main():
     def train_vae(epoch, iteration, batch,Y,cur_iter):
         if len(batch.size()) == 3:
             batch = batch.unsqueeze(0)
-
-        real= Variable(batch).cuda(base_gpu) 
+        real= Variable(batch).cuda(base_gpu)
                 
         info = "\n====> Cur_iter: [{}]: Epoch[{}]({}/{}): time: {:4.4f}: ".format(cur_iter, epoch, iteration, len(train_data_loader), time.time()-start_time)
         
@@ -292,6 +293,7 @@ def main():
 
         model.train()
         for iteration, (batch,Y) in enumerate(train_data_loader, 0):
+            Y = torch.stack(Y, dim=1).cuda(base_gpu)
             #--------------train------------
             if epoch < opt.num_vae:
                 train_vae(epoch, iteration, batch,Y, cur_iter)
