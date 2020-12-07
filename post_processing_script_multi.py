@@ -30,9 +30,9 @@ opt.FID_fake = False
 opt.FID_prototypes = False
 opt.workers = 4
 opt.C=10
-dataroots_list = ["/homes/rhu/data/mnist_3_8_64x64/","/homes/rhu/data/fashion_256x256/","/homes/rhu/data/data256x256/","/homes/rhu/data/covid_dataset_256x256/"]
-class_indicator_files_list = ["/homes/rhu/data/mnist_3_8.csv","/homes/rhu/data/fashion_price_class.csv","/homes/rhu/data/celebA_hq_gender.csv","/homes/rhu/data/covid_19_sick.csv"]
-train_sizes = [13000,22000,29000,1900]
+dataroots_list = ["/data/ziz/rhu/data/mnist_full_64x64","/data/ziz/rhu/data/data256x256"]
+class_indicator_files_list = ["/data/ziz/rhu/local_deploys/IntroVAE/mnist_full.csv","/data/ziz/rhu/local_deploys/IntroVAE/celebA_hq_gender_multi.csv",]
+train_sizes = [60000,29000]
 cdims = [1,3,3,1]
 img_height=[64,256,256,256]
 hdim_list=[16,512,512,512]
@@ -54,9 +54,7 @@ def run_post_process(opt,base_gpu,runs=1):
     train_z,train_c = generate_all_latents(model=model,dataloader=dl_train)
     test_z,test_c = generate_all_latents(model=model,dataloader=dl_test)
     traverse(test_z, test_c, model, opt.save_path)
-    if opt.umap:
-        make_binary_class_umap_plot(train_z.cpu().float().numpy(),train_c.cpu().numpy(),opt.save_path,opt.cur_it,'umap_train')
-        make_binary_class_umap_plot(test_z.cpu().float().numpy(),test_c.cpu().numpy(),opt.save_path,opt.cur_it,'umap_test')
+
     big_val = []
     for r in range(runs):
         val = []
@@ -156,7 +154,7 @@ if __name__ == '__main__':
         base_gpu = "cpu"
     torch.cuda.set_device(base_gpu)
 
-    for c,a,b in zip([0,1,2,3],[save_paths_mnist,save_paths_fashion,save_paths_faces,save_paths_covid],[model_paths_mnist,model_paths_fashion,model_paths_faces,model_paths_covid]):
+    for c,a,b in zip([0,2],[save_paths_mnist,save_paths_faces],[model_paths_mnist,model_paths_faces]):
         opt.dataset_index = c  # 0 = mnist, 1 = fashion, 2 = celeb
         for i,el in enumerate(a):
             opt.save_path = el+'/'
