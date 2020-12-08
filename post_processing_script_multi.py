@@ -10,6 +10,8 @@ import torch.backends.cudnn as cudnn
 import pandas as pd
 import shutil
 from file_paths import *
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
@@ -33,9 +35,9 @@ opt.C=10
 dataroots_list = ["/data/ziz/rhu/data/mnist_full_64x64","/data/ziz/rhu/data/data256x256"]
 class_indicator_files_list = ["/data/ziz/rhu/local_deploys/IntroVAE/mnist_full.csv","/data/ziz/rhu/local_deploys/IntroVAE/celebA_hq_gender_multi.csv",]
 train_sizes = [60000,29000]
-cdims = [1,3,3,1]
-img_height=[64,256,256,256]
-hdim_list=[16,512,512,512]
+cdims = [1,3]
+img_height=[64,256]
+hdim_list=[16,512]
 
 
 def run_post_process(opt,base_gpu,runs=1):

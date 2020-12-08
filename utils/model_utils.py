@@ -17,6 +17,12 @@ def get_dl(indicator,data_list,opt):
                                                     num_workers=opt.workers)
     return train_data_loader
 
+def get_dl_multi(indicator,data_list,opt):
+    train_set = ImageDatasetFromFile_DIF_multi(indicator,data_list, opt.dataroot, input_height=None, crop_height=None, output_height=opt.output_height, is_mirror=True,is_gray=opt.cdim!=3)
+    train_data_loader = torch.utils.data.DataLoader(train_set, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
+
+    return train_data_loader
+
 def dataloader_train_val_test(opt):
     data = pd.read_csv(opt.class_indicator_file)
     data = data.sample(frac=1,random_state=0)
@@ -42,24 +48,64 @@ def dataloader_train_val_test(opt):
 
     return train_data_loader,val_data_loader,test_data_loader
 
-def dataloader_train_test(opt):
+def dataloader_train_val_test_multi(opt):
     data = pd.read_csv(opt.class_indicator_file)
     data = data.sample(frac=1,random_state=0)
-    train_list = data['file_name'].values.tolist()[:opt.trainsize]
-    train_property_indicator = data['class'].values.tolist()[:opt.trainsize]
+
+    train_list_1 = data['file_name'].values.tolist()[:opt.trainsize]
+    cols = data.columns.tolist()
+    cols.remove('file_name')
+    train_property_indicator_1 = data[cols].values.tolist()[:opt.trainsize]
+
+
+    train_list = train_list_1[:(opt.trainsize-opt.valsize)]
+    train_property_indicator = train_property_indicator_1[:(opt.trainsize-opt.valsize)]
+
+    val_list = train_list_1[(opt.trainsize - opt.valsize):]
+    val_property_indicator = train_property_indicator_1[(opt.trainsize - opt.valsize):]
 
     test_list = data['file_name'].values.tolist()[opt.trainsize:]
-    test_property_indicator = data['class'].values.tolist()[opt.trainsize:]
+    test_property_indicator = data[cols].values.tolist()[opt.trainsize:]
 
     # swap out the train files
 
     assert len(train_list) > 0
 
+    train_data_loader = get_dl_multi(train_property_indicator, train_list, opt)
+    val_data_loader = get_dl_multi(val_property_indicator, val_list, opt)
+    test_data_loader = get_dl_multi(test_property_indicator, test_list, opt)
+
+    return train_data_loader,val_data_loader,test_data_loader, cols
+
+def dataloader_train_test(opt):
+    data = pd.read_csv(opt.class_indicator_file)
+    data = data.sample(frac=1,random_state=0)
+    train_list = data['file_name'].values.tolist()[:opt.trainsize]
+    train_property_indicator = data['class'].values.tolist()[:opt.trainsize]
+    test_list = data['file_name'].values.tolist()[opt.trainsize:]
+    test_property_indicator = data['class'].values.tolist()[opt.trainsize:]
+    # swap out the train files
+    assert len(train_list) > 0
     train_data_loader = get_dl(train_property_indicator,train_list,opt)
     test_data_loader = get_dl(test_property_indicator,test_list,opt)
-
-
     return train_data_loader,test_data_loader
+
+def dataloader_train_test_multi(opt):
+    data = pd.read_csv(opt.class_indicator_file)
+    data = data.sample(frac=1,random_state=0)
+    train_list = data['file_name'].values.tolist()[:opt.trainsize]
+    cols = data.columns.tolist()
+    cols.remove('file_name')
+    train_property_indicator = data[cols].values.tolist()[:opt.trainsize]
+    test_list = data['file_name'].values.tolist()[opt.trainsize:]
+    test_property_indicator = data[cols].values.tolist()[opt.trainsize:]
+
+    # swap out the train files
+
+    assert len(train_list) > 0
+    train_data_loader = get_dl_multi(train_property_indicator,train_list,opt)
+    test_data_loader = get_dl_multi(test_property_indicator,test_list,opt)
+    return train_data_loader,test_data_loader,cols
 
 def get_fake_images(model,n):
     with torch.no_grad():
@@ -93,6 +139,20 @@ def generate_all_latents(dataloader,model):
             z = get_latents(model,batch.cuda())
         _latents.append(z.float())
         _class.append(c)
+    _latents = torch.cat(_latents,dim=0)
+    _class = torch.cat(_class,dim=0)
+    return _latents,_class
+
+
+def generate_all_latents_multi(dataloader,model):
+    _latents = []
+    _class = []
+    for iteration, (batch, c) in enumerate(tqdm.tqdm(dataloader)):
+        Y = torch.stack(c, dim=1)
+        with autocast():
+            z = get_latents(model,batch.cuda())
+        _latents.append(z.float())
+        _class.append(Y)
     _latents = torch.cat(_latents,dim=0)
     _class = torch.cat(_class,dim=0)
     return _latents,_class

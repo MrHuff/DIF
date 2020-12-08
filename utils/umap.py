@@ -2,12 +2,12 @@ import umap
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from matplotlib.cm import get_cmap
+mpl.use("Agg")
+import matplotlib.colors as mcolors
 
-name = "tab20"
-cmap = get_cmap(name)  # type:
-colors = cmap.colors  # type:
-
+colors= list(mcolors.TABLEAU_COLORS.items())
 def reject_outliers(data, m=2):
     norm = np.linalg.norm(data,axis=1)
     return data[abs(norm - np.mean(norm)) < m * np.std(norm),:]
@@ -15,17 +15,20 @@ def reject_outliers(data, m=2):
 def make_multi_class_umap_plot(all_h,c,save_path,cur_it,description,feature_names):
     nr_of_isolated_features = c.shape[1]
     reducer_h = umap.UMAP()
-    data_umap = reducer_h.fit_transform(all_h[:nr_of_isolated_features,:])
-
-    def subset(input,boolean):
+    print(all_h[:10,:nr_of_isolated_features])
+    data_umap = reducer_h.fit_transform(all_h[:,:nr_of_isolated_features])
+    print(data_umap[:10,:])
+    def subset(input,boolean): #Fix the boolean error...
+        boolean = np.array(boolean, dtype=bool)
         subset = input[boolean,:]
         return subset[:,0],subset[:,1]
-
     fig, ax = plt.subplots()
-    for j in nr_of_isolated_features:
+    for j in range(nr_of_isolated_features):
         boolean = c[:,j]
         X,Y=subset(data_umap,boolean)
-        ax.scatter(X, Y, label=feature_names[j], c=colors[j], alpha=0.25, marker='.', s=10)
+        print(X[:10],Y[:10])
+        print(feature_names[j])
+        ax.scatter(X, Y, label=feature_names[j], c=colors[j][0], alpha=0.25, marker='.', s=10)
     ax.legend()
     ax.grid(True)
     plt.savefig(f'{save_path}/intro-vae_umap_{description}_{cur_it}.png')

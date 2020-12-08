@@ -36,4 +36,14 @@ model_paths_covid = [
                     'model_epoch_150_iter_12000.pth',
                      ]
 
+save_paths_faces_multi = [
+    'modelfaces_multi_bs=32_beta=1.0_KL=1.0_KLneg=0.5_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_obj=2_J=0.25_mask=True_mask_KL=1.0',
+    'modelfaces_multi_bs=32_beta=1.0_KL=1.0_KLneg=0.5_m=1000.0_lambda_me=0.25_kernel=linear_tanh=True_C=10.0_obj=2_J=0.25_mask=True_mask_KL=1.0',
+    'modelfaces_multi_bs=32_beta=1.0_KL=1.0_KLneg=0.5_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_obj=2_J=0.25_mask=True_mask_KL=1.0',
+]
+save_paths_mnist_multi = [
+    'modelmnist_multi_bs=32_beta=1.0_KL=1.0_KLneg=0.5_m=1000.0_lambda_me=0.01_kernel=linear_tanh=True_C=10.0_obj=2_J=0.25_mask=True_mask_KL=1.0',
+    'modelmnist_multi_bs=32_beta=1.0_KL=1.0_KLneg=0.5_m=1000.0_lambda_me=0.1_kernel=linear_tanh=True_C=10.0_obj=2_J=0.25_mask=True_mask_KL=1.0',
+    'modelmnist_multi_bs=32_beta=1.0_KL=1.0_KLneg=0.5_m=1000.0_lambda_me=1.0_kernel=linear_tanh=True_C=10.0_obj=2_J=0.25_mask=True_mask_KL=1.0',
 
+]

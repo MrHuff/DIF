@@ -75,8 +75,7 @@ def main():
 
     #--------------build models -------------------------
     model = DIF_netv2(flow_C=opt.C,
-                    flow_depth=opt.flow_depth,
-                    tanh_flag=opt.tanh_flag,
+                      tanh_flag=opt.tanh_flag,
                     cdim=opt.cdim,
                     hdim=opt.hdim,
                     channels=str_to_list(opt.channels),
@@ -96,7 +95,7 @@ def main():
     #-----------------load dataset--------------------------
     train_data = pd.read_csv(opt.class_indicator_file)
     indicators = train_data.columns.tolist() -['file_name']
-    train_data = train_data.sample(frac=1)
+    train_data = train_data.sample(frac=1,random_state=0)
     train_list = train_data['file_name'].values.tolist()[:opt.trainsize]
     property_indicator = train_data[indicators].values.tolist()[:opt.trainsize]
     #swap out the train files

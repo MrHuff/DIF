@@ -14,29 +14,32 @@ from models.ME_objectives import *
 from torch.cuda.amp import autocast,GradScaler
 import pandas as pd
 import GPUtil
-from main import parser,record_image,record_scalar,str_to_list,load_model,save_checkpoint
+from main import record_image,record_scalar,load_model,save_checkpoint
+import argparse
+from generate_job_params import load_obj
+parser = argparse.ArgumentParser()
+parser.add_argument('--idx', type=int, default=0, help='cdim')
+parser.add_argument('--workers', type=int, default=4, help='cdim')
+parser.add_argument('--job_folder', type=str, default='', help='cdim')
 
+# parser.add_argument('--class_indicator_file', default="/home/file.csv", type=str, help='class indicator csv file')
+# parser.add_argument('--fp_16', action='store_true', help='enables fp_16')
+# parser.add_argument('--tanh_flag', action='store_true', help='enables tanh')
+# parser.add_argument("--C", type=float, default=100.0, help="Default=100.0")
+# parser.add_argument("--J", type=float, default=0.25, help="Default=0.25")
+# parser.add_argument("--kernel", default="rbf", type=str, help="kernel choice")
+# parser.add_argument("--lambda_me", type=float, default=1.0, help="Default=0.25")
+# parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
+# parser.add_argument("--prefix", default="", type=str, help="dataset")
+# parser.add_argument('--separation_objective',type=int,default=1, help='linear bench')
+# parser.add_argument('--cdim', type=int, default=3, help='cdim')
+# parser.add_argument('--apply_mask', action='store_true', help='isolate features to specific dimensions')
+# parser.add_argument('--mask_KL', type=float, default=1.0, help="KL_mask")
 
-parser.add_argument('--class_indicator_file', default="/home/file.csv", type=str, help='class indicator csv file')
-parser.add_argument('--fp_16', action='store_true', help='enables fp_16')
-parser.add_argument('--tanh_flag', action='store_true', help='enables tanh')
-parser.add_argument("--C", type=float, default=100.0, help="Default=100.0")
-parser.add_argument("--J", type=float, default=0.25, help="Default=0.25")
-parser.add_argument("--kernel", default="rbf", type=str, help="kernel choice")
-parser.add_argument("--lambda_me", type=float, default=1.0, help="Default=0.25")
-parser.add_argument('--umap', action='store_true', help='visualizes umap')
-parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
-parser.add_argument("--prefix", default="", type=str, help="dataset")
-parser.add_argument('--separation_objective',type=int,default=1, help='linear bench')
-parser.add_argument('--cdim', type=int, default=3, help='cdim')
-parser.add_argument('--apply_mask', action='store_true', help='isolate features to specific dimensions')
-parser.add_argument('--mask_KL', type=float, default=1.0, help="KL_mask")
-
-def main():
+def main(opt):
     print(torch.__version__)
     # torch.autograd.set_detect_anomaly(True)
-    global opt, model
-    opt = parser.parse_args()
+    global model
     print(opt)
     param_suffix = f"{opt.prefix}_bs={opt.batchSize}_beta={opt.weight_rec}_KL={opt.weight_kl}_KLneg={opt.weight_neg}_m={opt.m_plus}_lambda_me={opt.lambda_me}_kernel={opt.kernel}_tanh={opt.tanh_flag}_C={opt.C}_obj={opt.separation_objective}_J={opt.J}_mask={opt.apply_mask}_mask_KL={opt.mask_KL}"
     opt.outf = f'results{param_suffix}/'
@@ -65,7 +68,7 @@ def main():
                     tanh_flag=opt.tanh_flag,
                     cdim=opt.cdim,
                     hdim=opt.hdim,
-                    channels=str_to_list(opt.channels),
+                    channels=opt.channels,
                     image_size=opt.output_height).cuda(base_gpu)
 
     if opt.pretrained:
@@ -79,7 +82,7 @@ def main():
 
     #-----------------load dataset--------------------------
     train_data = pd.read_csv(opt.class_indicator_file)
-    train_data = train_data.sample(frac=1)#Shuffle your data!
+    train_data = train_data.sample(frac=1,random_state=0)#Shuffle your data!
     train_list = train_data['file_name'].values.tolist()[:opt.trainsize]
     cols = train_data.columns.tolist()
     cols.remove('file_name')
@@ -98,7 +101,8 @@ def main():
 
     if opt.lambda_me!=0:
         if opt.separation_objective==1:
-            me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu)
+            pass
+            # me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu) do sigmoid IDEA
         elif opt.separation_objective==2:
             me_obj = NFSIC(J=opt.J,kernel_type=opt.kernel).cuda(base_gpu)
 
@@ -303,6 +307,21 @@ def main():
             cur_iter += 1
 
 
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 
 if __name__ == "__main__":
-    main()
+    input = vars(parser.parse_args())
+    idx = input['idx']
+    fold = input['job_folder']
+    workers = input['workers']
+    jobs = os.listdir(fold)
+    jobs.sort()
+    print(jobs[idx])
+    opt = load_obj(jobs[idx], folder=f'{fold}/')
+    opt['workers']=workers
+    opt = dotdict(opt)
+    main(opt)
