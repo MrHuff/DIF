@@ -116,6 +116,14 @@ class NFSIC(nn.Module):
         # print(lambda_n)
         return lambda_n
 
+class square_multi(nn.Module):
+    def __init__(self):
+        super(square_multi, self).__init__()
+
+    def forward(self,X,Y):
+        ref = torch.sum((X-Y)**2)
+        return ref
+
 class MEstat(nn.Module):
     def __init__(self,J,ls=10,test_nx=1,test_ny=1,asymp_n=-1,kernel_type = 'rbf',linear_var=1e-3):
         super(MEstat, self).__init__()

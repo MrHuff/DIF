@@ -22,20 +22,6 @@ parser.add_argument('--idx', type=int, default=0, help='cdim')
 parser.add_argument('--workers', type=int, default=4, help='cdim')
 parser.add_argument('--job_folder', type=str, default='', help='cdim')
 
-# parser.add_argument('--class_indicator_file', default="/home/file.csv", type=str, help='class indicator csv file')
-# parser.add_argument('--fp_16', action='store_true', help='enables fp_16')
-# parser.add_argument('--tanh_flag', action='store_true', help='enables tanh')
-# parser.add_argument("--C", type=float, default=100.0, help="Default=100.0")
-# parser.add_argument("--J", type=float, default=0.25, help="Default=0.25")
-# parser.add_argument("--kernel", default="rbf", type=str, help="kernel choice")
-# parser.add_argument("--lambda_me", type=float, default=1.0, help="Default=0.25")
-# parser.add_argument("--KL_G", type=float, default=0.25, help="KL_G")
-# parser.add_argument("--prefix", default="", type=str, help="dataset")
-# parser.add_argument('--separation_objective',type=int,default=1, help='linear bench')
-# parser.add_argument('--cdim', type=int, default=3, help='cdim')
-# parser.add_argument('--apply_mask', action='store_true', help='isolate features to specific dimensions')
-# parser.add_argument('--mask_KL', type=float, default=1.0, help="KL_mask")
-
 def main(opt):
     print(torch.__version__)
     # torch.autograd.set_detect_anomaly(True)
@@ -101,8 +87,7 @@ def main(opt):
 
     if opt.lambda_me!=0:
         if opt.separation_objective==1:
-            pass
-            # me_obj = linear_benchmark(d=opt.hdim).cuda(base_gpu) do sigmoid IDEA
+            me_obj = square_multi().cuda(base_gpu)
         elif opt.separation_objective==2:
             me_obj = NFSIC(J=opt.J,kernel_type=opt.kernel).cuda(base_gpu)
 
