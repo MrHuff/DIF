@@ -62,11 +62,11 @@ def record_scalar(writer, scalar_list, scalar_name_list, cur_iter):
     scalar_name_list = scalar_name_list[1:-1].split(',')
     for idx, item in enumerate(scalar_list):
         writer.add_scalar(scalar_name_list[idx].strip(' '), item, cur_iter)
+    writer.flush()
 
 def record_image(writer, image_list, cur_iter):
     image_to_show = torch.cat(image_list, dim=0)
     writer.add_image('visualization', make_grid(image_to_show, nrow=opt.nrow), cur_iter)
-    
 
 def main():
     print(torch.__version__)

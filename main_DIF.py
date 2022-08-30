@@ -168,12 +168,12 @@ def main():
         print(info)
         
         if cur_iter % opt.test_iter is 0:  
-            if opt.tensorboard:
-                record_scalar(writer, eval(loss_info), loss_info, cur_iter)
-                if cur_iter % 1000 == 0:
-                    record_image(writer, [real, rec], cur_iter)   
-            else:
-                vutils.save_image(torch.cat([real, rec], dim=0).data.cpu(), '{}/vae_image_{}.jpg'.format(opt.outf, cur_iter),nrow=opt.nrow)
+            # if opt.tensorboard:
+            #     record_scalar(writer, eval(loss_info), loss_info, cur_iter)
+            #     if cur_iter % 1000 == 0:
+            #         record_image(writer, [real, rec], cur_iter)
+            # else:
+            vutils.save_image(torch.cat([real, rec], dim=0).data.cpu(), '{}/vae_image_{}.jpg'.format(opt.outf, cur_iter),nrow=opt.nrow)
     
     def train(epoch, iteration, batch,c, cur_iter):
         if len(batch.size()) == 3:
@@ -186,7 +186,7 @@ def main():
         real= batch.cuda(base_gpu)
         info = "\n====> Cur_iter: [{}]: Epoch[{}]({}/{}): time: {:4.4f}: ".format(cur_iter, epoch, iteration, len(train_data_loader), time.time()-start_time)
         
-        loss_info = '[loss_rec, loss_margin, lossE_real_kl, lossE_rec_kl, lossE_fake_kl, lossG_rec_kl, lossG_fake_kl,]'
+        loss_info = '[loss_rec, loss_margin, lossE_real_kl, lossE_rec_kl, lossE_fake_kl, lossG_rec_kl, lossG_fake_kl,T_loss]'
 
         #Problem is flow is trained with competing objectives on the same entity? Still unstable training!
         # Tune parameters?! Fake part is giving me a hard time...
@@ -288,10 +288,10 @@ def main():
         # for m in model.flow.parameters(): #Controls whether which objectives apply to flow
         #     m.requires_grad=True
         #Write down setups, carefully consider gradient updates to avoid positive feedback loop!
-
+        loss_margin=opt.weight_kl*loss_margin.item()
         #. The key is to hold the regularization term LREG in Eq. (11) and Eq. (12) below the margin value m for most of the time
         info += 'Rec: {:.4f}, '.format(loss_rec.item()*opt.weight_rec)
-        info += 'Margin loss: {:.4f}, '.format(opt.weight_kl*loss_margin.item())
+        info += 'Margin loss: {:.4f}, '.format(loss_margin)
         info += 'Total loss E: {:.4f}, '.format(lossE.item())
         info += 'Total loss G: {:.4f}, '.format(lossG.item())
         info += 'Kl_E: {:.4f}, {:.4f}, {:.4f}, '.format(lossE_real_kl.item(),
@@ -301,11 +301,14 @@ def main():
 
         print(info)
         
-        if cur_iter % opt.test_iter is 0:            
+        if cur_iter % opt.test_iter is 0:
             if opt.tensorboard:
                 record_scalar(writer, eval(loss_info), loss_info, cur_iter)
+                print(f'recorded data at cut_iter = {cur_iter}')
                 if cur_iter % 1000 == 0:
-                    record_image(writer, [real, rec, fake], cur_iter)   
+                    vutils.save_image(torch.cat([real, rec, fake], dim=0).data.cpu(),
+                                      '{}/image_{}.jpg'.format(opt.outf, cur_iter), nrow=opt.nrow)
+
             else:
                 vutils.save_image(torch.cat([real, rec, fake], dim=0).data.cpu(), '{}/image_{}.jpg'.format(opt.outf, cur_iter),nrow=opt.nrow)
 
