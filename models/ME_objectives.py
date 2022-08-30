@@ -131,7 +131,7 @@ class MEstat(nn.Module):
             cov_Y, y_bar, k_Y, kY = self.calculate_hotelling(Y)
         pooled = 1. / (n_x + n_y - 2.) * (cov_X + cov_Y)
         z = torch.unsqueeze(x_bar - y_bar, 1)
-        inv_z,_ = torch.solve(z,pooled.float() + self.coeff*torch.eye(pooled.shape[0]).float().to(pooled.device))
+        inv_z = torch.linalg.solve(pooled.float() + self.coeff*torch.eye(pooled.shape[0]).float().to(pooled.device),z)
         test_statistic = n_x * n_y / (n_x + n_y) * torch.sum(z * inv_z)
         return test_statistic
 
@@ -162,7 +162,7 @@ class MEstat(nn.Module):
             cov_Y,y_bar,k_Y,kY = self.calculate_hotelling(Y)
         pooled = 1./(n_x+n_y-2.) * cov_X +  cov_Y*1./(n_x+n_y-2.)
         z = torch.unsqueeze(x_bar-y_bar,1)
-        inv_z,_ = torch.solve(z.float(),pooled.float() + self.coeff*torch.eye(pooled.shape[0]).float().to(tmp_dev))
+        inv_z = torch.linalg.solve(pooled.float() + self.coeff*torch.eye(pooled.shape[0]).float().to(tmp_dev),z.float())
         test_statistic = n_x*n_y/(n_x + n_y) * torch.sum(z*inv_z)
 
         if test_statistic.data ==0 or test_statistic==float('inf') or test_statistic!=test_statistic: #The lengthscale be fucking me...
